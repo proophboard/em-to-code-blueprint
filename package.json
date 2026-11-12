@@ -1,0 +1,32 @@
+{
+  "name": "@proophboard/em-to-code-blueprint",
+  "version": "0.1.0",
+  "description": "Stream prooph board changelog events to your terminal and trigger commands (e.g. AI agents) in real time.",
+  "keywords": [
+    "prooph-board",
+    "event-modeling",
+    "cli",
+    "codegen",
+    "ai-agents",
+    "spec-driven-development"
+  ],
+  "homepage": "https://github.com/proophboard/em-to-code-blueprint#readme",
+  "bugs": {
+    "url": "https://github.com/proophboard/em-to-code-blueprint/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/proophboard/em-to-code-blueprint.git"
+  },
+  "license": "MIT",
+  "author": "prooph software GmbH",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "typescript": "^5.5.0",
+    "vitest": "^5.1.0"
+  }
+}

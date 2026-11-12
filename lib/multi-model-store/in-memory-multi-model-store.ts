@@ -1,0 +1,138 @@
+import {MultiModelStore} from "@lib/multi-model-store/multi-model-store";
+import {InMemoryEventStore} from "@lib/event-store/in-memory-event-store";
+import {InMemoryDocumentStore} from "@lib/document-store/in-memory-document-store";
+import {Event, MessageMeta, MessagePayload} from "@lib/types/message";
+import {EventMatcher} from "@lib/event-store/event-matcher";
+import {Session} from "@lib/multi-model-store/session";
+
+
+export class InMemoryMultiModelStore implements MultiModelStore {
+  private eventStore: InMemoryEventStore;
+  private documentStore: InMemoryDocumentStore;
+
+  constructor(eventStore: InMemoryEventStore, documentStore: InMemoryDocumentStore) {
+    this.eventStore = eventStore;
+    this.documentStore = documentStore;
+  }
+
+  async loadEvents <P extends MessagePayload = any, M extends MessageMeta = any>(streamName: string, eventMatcher?: EventMatcher, fromEventId?: string, limit?: number, reverse?: boolean): Promise<AsyncIterable<Event<P,M>>> {
+    return this.eventStore.load(streamName, eventMatcher, fromEventId, limit, reverse);
+  }
+
+  async loadDoc <D extends object>(collectionName: string, docId: string): Promise<{doc: D, version: number} | null> {
+    return this.documentStore.getDocAndVersion(collectionName, docId);
+  }
+
+  beginSession(): Session {
+    return new Session();
+  }
+
+  async commitSession(session: Session): Promise<boolean> {
+    session.commit();
+
+    const currentStreams = await this.eventStore.exportStreams();
+    const currentBackup = await this.documentStore.exportBackup();
+
+    this.eventStore.disableDiskStorage();
+    this.documentStore.disableDiskStorage();
+
+    try {
+      for (const appendEventsTask of session.getAppendEventsTasks()) {
+        await this.eventStore.appendTo(
+          appendEventsTask.streamName,
+          appendEventsTask.events,
+          appendEventsTask.eventMatcher,
+          appendEventsTask.expectedVersion
+        )
+      }
+
+      for (const deleteEventsTask of session.getDeleteEventsTasks()) {
+        await this.eventStore.delete(deleteEventsTask.streamName, deleteEventsTask.eventMatcher);
+      }
+
+      for (const insertDocumentTask of session.getInsertDocumentTasks()) {
+        await this.documentStore.addDoc(
+          insertDocumentTask.collectionName,
+          insertDocumentTask.docId,
+          insertDocumentTask.doc,
+          insertDocumentTask.metadata,
+          insertDocumentTask.version
+        )
+      }
+
+      for (const upsertDocumentTask of session.getUpsertDocumentTasks()) {
+        await this.documentStore.upsertDoc(
+          upsertDocumentTask.collectionName,
+          upsertDocumentTask.docId,
+          upsertDocumentTask.doc,
+          upsertDocumentTask.metadata,
+          upsertDocumentTask.version
+        )
+      }
+
+      for (const updateDocumentTask of session.getUpdateDocumentTasks()) {
+        await this.documentStore.updateDoc(
+          updateDocumentTask.collectionName,
+          updateDocumentTask.docId,
+          updateDocumentTask.doc,
+          updateDocumentTask.metadata,
+          updateDocumentTask.version
+        )
+      }
+
+      for (const updateManyDocumentsTask of session.getUpdateManyDocumentsTasks()) {
+        await this.documentStore.updateMany(
+          updateManyDocumentsTask.collectionName,
+          updateManyDocumentsTask.filter,
+          updateManyDocumentsTask.docOrSubset,
+          updateManyDocumentsTask.metadata,
+          updateManyDocumentsTask.version
+        )
+      }
+
+      for (const replaceDocumentTask of session.getReplaceDocumentTasks()) {
+        await this.documentStore.replaceDoc(
+          replaceDocumentTask.collectionName,
+          replaceDocumentTask.docId,
+          replaceDocumentTask.doc,
+          replaceDocumentTask.metadata,
+          replaceDocumentTask.version
+        )
+      }
+
+      for (const replaceManyDocumentsTask of session.getReplaceManyDocumentsTasks()) {
+        await this.documentStore.replaceMany(
+          replaceManyDocumentsTask.collectionName,
+          replaceManyDocumentsTask.filter,
+          replaceManyDocumentsTask.doc,
+          replaceManyDocumentsTask.metadata,
+          replaceManyDocumentsTask.version
+        )
+      }
+
+      for (const deleteDocumentTask of session.getDeleteDocumentTasks()) {
+        await this.documentStore.deleteDoc(deleteDocumentTask.collectionName, deleteDocumentTask.docId);
+      }
+
+      for (const deleteManyDocumentsTask of session.getDeleteManyDocumentsTasks()) {
+        await this.documentStore.deleteMany(
+          deleteManyDocumentsTask.collectionName,
+          deleteManyDocumentsTask.filter
+        )
+      }
+
+      this.eventStore.enableDiskStorage();
+      this.documentStore.enableDiskStorage();
+      this.documentStore.flush();
+      this.eventStore.flush();
+    } catch (e) {
+      await this.eventStore.importStreams(currentStreams);
+      await this.documentStore.importBackup(currentBackup);
+      this.eventStore.enableDiskStorage();
+      this.documentStore.enableDiskStorage();
+      throw e;
+    }
+
+    return true;
+  }
+}
