@@ -15,7 +15,7 @@ import {
   getValueFromPath,
   transformPartialDoc
 } from "./helpers";
-import {Filesystem} from "@lib/helpers/fs";
+import {Filesystem} from "@lib/filesystem/fs";
 import {asyncIteratorToArray} from "@lib/helpers/async-iterator-to-array";
 import {asyncMap} from "@lib/helpers/async-map";
 import {EqFilter} from "@lib/document-store/filter/EqFilter";
@@ -242,16 +242,6 @@ export class InMemoryDocumentStore implements DocumentStore {
 
     for (const [docId, doc] of docs) {
       await this.updateDoc(collectionName, docId, set, metadata, version);
-    }
-
-    return;
-  }
-
-  public async replaceMany(collectionName: string, filter: Filter, set: object, metadata?: object, version?: number): Promise<void> {
-    const docs = await asyncIteratorToArray(await this.findDocs(collectionName, filter));
-
-    for (const [docId, doc] of docs) {
-      await this.replaceDoc(collectionName, docId, set, metadata, version);
     }
 
     return;

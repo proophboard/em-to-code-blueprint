@@ -1,5 +1,5 @@
 /* eslint-disable no-prototype-builtins */
-import {Filesystem} from "@lib/helpers/fs";
+import {Filesystem} from "@lib/filesystem/fs";
 import {ConcurrencyError} from "./concurrency-error";
 import {
   EventMatcher, MatchOperator,

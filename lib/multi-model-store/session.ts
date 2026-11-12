@@ -1,9 +1,10 @@
 import {EventMatcher} from "@lib/event-store/event-matcher";
 import {Filter} from "@lib/document-store/filter";
+import {Event} from "@lib/types/message";
 
-export type SessionTask = AppendEventsTask | DeleteEventsTask | UpsertDocumentTask | InsertDocumentTask | UpdateDocumentTask | ReplaceDocumentTask | DeleteDocumentTask | UpdateManyDocumentsTask | ReplaceManyDocumentsTask | DeleteManyDocumentsTask;
+export type SessionTask = AppendEventsTask | DeleteEventsTask | UpsertDocumentTask | InsertDocumentTask | UpdateDocumentTask | ReplaceDocumentTask | DeleteDocumentTask | UpdateManyDocumentsTask | DeleteManyDocumentsTask;
 
-interface AppendEventsTask {
+export type AppendEventsTask = {
   streamName: string;
   events: Event[],
   eventMatcher?: EventMatcher;
@@ -14,7 +15,7 @@ export const isAppendEventsTask = (task: SessionTask): task is AppendEventsTask 
   return (task as AppendEventsTask).events !== undefined;
 }
 
-interface DeleteEventsTask {
+export type DeleteEventsTask = {
   streamName: string;
   eventMatcher: EventMatcher;
 }
@@ -23,7 +24,7 @@ export const isDeleteEventsTask = (task: SessionTask): task is DeleteEventsTask 
   return (task as DeleteEventsTask).eventMatcher !== undefined && (task as AppendEventsTask).events === undefined;
 }
 
-interface ChangeDocumentTask {
+export type ChangeDocumentTask = {
   collectionName: string;
   type: 'insert' | 'upsert' | 'update' | 'replace';
   docId: string;
@@ -32,31 +33,31 @@ interface ChangeDocumentTask {
   version?: number;
 }
 
-type InsertDocumentTask = ChangeDocumentTask & {type: 'insert'};
+export type InsertDocumentTask = ChangeDocumentTask & {type: 'insert'};
 
 export const isInsertDocumentTask = (task: SessionTask): task is InsertDocumentTask => {
   return (task as InsertDocumentTask).type === 'insert';
 }
 
-type UpsertDocumentTask = ChangeDocumentTask & {type: 'upsert'};
+export type UpsertDocumentTask = ChangeDocumentTask & {type: 'upsert'};
 
 export const isUpsertDocumentTask = (task: SessionTask): task is UpsertDocumentTask => {
   return (task as UpsertDocumentTask).type === 'upsert';
 }
 
-type UpdateDocumentTask = ChangeDocumentTask & {type: 'update'};
+export type UpdateDocumentTask = ChangeDocumentTask & {type: 'update'};
 
 export const isUpdateDocumentTask = (task: SessionTask): task is UpdateDocumentTask => {
   return (task as UpdateDocumentTask).type === 'update';
 }
 
-type ReplaceDocumentTask = ChangeDocumentTask & {type: 'replace'};
+export type ReplaceDocumentTask = ChangeDocumentTask & {type: 'replace'};
 
 export const isReplaceDocumentTask = (task: SessionTask): task is ReplaceDocumentTask => {
   return (task as ReplaceDocumentTask).type === 'replace';
 }
 
-interface DeleteDocumentTask {
+export type DeleteDocumentTask = {
   collectionName: string;
   docId: string;
 }
@@ -67,7 +68,7 @@ export const isDeleteDocumentTask = (task: SessionTask): task is DeleteDocumentT
     && typeof (task as ChangeDocumentTask).type === undefined;
 }
 
-interface UpdateManyDocumentsTask {
+export type UpdateManyDocumentsTask = {
   collectionName: string;
   filter: Filter;
   docOrSubset: object;
@@ -82,22 +83,7 @@ export const isUpdateManyDocumentsTask = (task: SessionTask): task is UpdateMany
     && typeof (task as ChangeDocumentTask).type === undefined;
 }
 
-interface ReplaceManyDocumentsTask {
-  collectionName: string;
-  filter: Filter;
-  doc: object;
-  metadata?: object;
-  version?: number;
-}
-
-export const isReplaceManyDocumentsTask = (task: SessionTask): task is ReplaceManyDocumentsTask => {
-  return typeof (task as ReplaceManyDocumentsTask).collectionName !== undefined
-    && typeof (task as ReplaceManyDocumentsTask).filter !== undefined
-    && typeof (task as ReplaceManyDocumentsTask).doc !== undefined
-    && typeof (task as ChangeDocumentTask).type === undefined;
-}
-
-interface DeleteManyDocumentsTask {
+export type DeleteManyDocumentsTask = {
   collectionName: string;
   filter: Filter;
 }
@@ -106,7 +92,6 @@ export const isDeleteManyDocumentsTask = (task: SessionTask): task is DeleteMany
   return typeof (task as DeleteManyDocumentsTask).collectionName !== undefined
     && typeof (task as DeleteManyDocumentsTask).filter !== undefined
     && typeof (task as UpdateManyDocumentsTask).docOrSubset === undefined
-    && typeof (task as ReplaceManyDocumentsTask).doc === undefined
     && typeof (task as ChangeDocumentTask).type === undefined;
 }
 
@@ -119,7 +104,6 @@ export class Session {
   private replaceDocumentTasks: ReplaceDocumentTask[] = [];
   private deleteDocumentTasks: DeleteDocumentTask[] = [];
   private updateManyDocumentsTasks: UpdateManyDocumentsTask[] = [];
-  private replaceManyDocumentsTasks: ReplaceManyDocumentsTask[] = [];
   private deleteManyDocumentsTasks: DeleteManyDocumentsTask[] = [];
   private committed = false;
   private variables: Record<string, any> = {};
@@ -141,6 +125,10 @@ export class Session {
   }
 
   public pushTasks (tasks: SessionTask[]): void {
+    if(this.committed) {
+      throw new Error(`[DB] Cannot push tasks. Multi-Model-Store Session is already committed.`)
+    }
+
     for (const task of tasks) {
       switch (true) {
         case isAppendEventsTask(task):
@@ -166,9 +154,6 @@ export class Session {
         break;
         case isUpdateManyDocumentsTask(task):
           this.updateManyDocumentsTasks.push(task);
-        break;
-        case isReplaceManyDocumentsTask(task):
-          this.replaceManyDocumentsTasks.push(task);
         break;
         case isDeleteManyDocumentsTask(task):
           this.deleteManyDocumentsTasks.push(task);
@@ -233,13 +218,6 @@ export class Session {
     this.updateManyDocumentsTasks.push({collectionName, filter, docOrSubset, metadata, version});
   }
 
-  public replaceManyDocuments(collectionName: string, filter: Filter, doc: object, metadata?: object, version?: number): void {
-    if(this.committed) {
-      throw new Error(`[DB] Cannot replace documents in collection: ${collectionName}. Multi-Model-Store Session is already committed.`)
-    }
-    this.replaceManyDocumentsTasks.push({collectionName, filter, doc, metadata, version});
-  }
-
   public deleteManyDocuments(collectionName: string, filter: Filter): void {
     if(this.committed) {
       throw new Error(`[DB] Cannot delete documents in collection: ${collectionName}. Multi-Model-Store Session is already committed.`)
@@ -277,10 +255,6 @@ export class Session {
 
   public getUpdateManyDocumentsTasks(): UpdateManyDocumentsTask[] {
     return [...this.updateManyDocumentsTasks];
-  }
-
-  public getReplaceManyDocumentsTasks(): ReplaceManyDocumentsTask[] {
-    return [...this.replaceManyDocumentsTasks];
   }
 
   public getDeleteManyDocumentsTasks(): DeleteManyDocumentsTask[] {

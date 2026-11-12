@@ -1,4 +1,4 @@
-import {Filter} from "./Filter";
+import {Filter} from "./filter";
 import {Index} from "./Index";
 import {SequenceProvider} from "@lib/sequence-provider/sequence-provider";
 
@@ -58,8 +58,8 @@ export interface DocumentStore extends SequenceProvider {
   deleteDoc: (collectionName: string, docId: string) => Promise<void>;
 
   updateMany: (collectionName: string, filter: Filter, docOrSubset: object, metadata?: object, version?: number) => Promise<void>;
-  replaceMany: (collectionName: string, filter: Filter, doc: object, metadata?: object, version?: number) => Promise<void>;
   deleteMany: (collectionName: string, filter: Filter) => Promise<void>;
+
   findDocs: <D extends object>(collectionName: string, filter: Filter, skip?: number, limit?: number, orderBy?: SortOrder) => Promise<AsyncIterable<[string, D, number]>>;
   findPartialDocs: <D extends object>(collectionName: string, partialSelect: PartialSelect, filter: Filter, skip?: number, limit?: number, orderBy?: SortOrder) => Promise<AsyncIterable<[string, D, number]>>;
   findDocIds: (collectionName: string, filter: Filter, skip?: number, limit?: number, orderBy?: SortOrder) => Promise<string[]>;

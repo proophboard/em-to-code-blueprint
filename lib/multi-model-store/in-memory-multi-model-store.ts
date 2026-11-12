@@ -100,16 +100,6 @@ export class InMemoryMultiModelStore implements MultiModelStore {
         )
       }
 
-      for (const replaceManyDocumentsTask of session.getReplaceManyDocumentsTasks()) {
-        await this.documentStore.replaceMany(
-          replaceManyDocumentsTask.collectionName,
-          replaceManyDocumentsTask.filter,
-          replaceManyDocumentsTask.doc,
-          replaceManyDocumentsTask.metadata,
-          replaceManyDocumentsTask.version
-        )
-      }
-
       for (const deleteDocumentTask of session.getDeleteDocumentTasks()) {
         await this.documentStore.deleteDoc(deleteDocumentTask.collectionName, deleteDocumentTask.docId);
       }
