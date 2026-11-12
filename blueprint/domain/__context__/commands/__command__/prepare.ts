@@ -1,8 +1,9 @@
 import {Command} from "@lib/types/message";
 import {Payload} from "./payload";
 import {State} from "./state";
+import {ServiceRegistry} from "@lib/types/service-registry";
 
-export default async function prepare(cmd: Command<Payload> /*, inject runtime dependencies to load state */): Promise<State> {
+export default async function prepare(cmd: Command<Payload>, services: ServiceRegistry): Promise<State> {
   /**
    * Prepare state for handle()
    *
