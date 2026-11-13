@@ -82,6 +82,27 @@ The command:
    - snake_case (`task_management`) in `index.ts`
    - PascalCase (`TaskManagement`) in `services.ts`
 
+#### `command <context> <name>`
+
+Generate a new command in an existing context:
+
+```bash
+npx app codegen command TaskManagement AddTodo
+npx app codegen command TaskManagement TaskManagement.UpdateTodo
+```
+
+**Arguments:**
+- `context` - Context name in PascalCase (e.g., `TaskManagement`)
+- `name` - Command name in PascalCase (e.g., `AddTodo`) or fully qualified name (e.g., `TaskManagement.AddTodo`)
+
+The command:
+1. Validates that the context exists (suggests `app codegen context` if not)
+2. Validates that the command is not already registered
+3. Creates a new folder `example/src/domain/[context]/commands/[command-name]`
+4. Copies blueprint files (`prepare.ts`, `handle.ts`, `payload.ts`, `state.ts`)
+5. Creates an empty `events/` folder (blueprint events are not copied)
+6. Adds the command to `commands.ts` with proper imports and registration
+
 ### Help
 
 Get help for the codegen command:
@@ -89,6 +110,13 @@ Get help for the codegen command:
 ```bash
 npx app codegen --help
 npx app codegen -h
+```
+
+Get help for a specific subcommand:
+
+```bash
+npx app codegen context --help
+npx app codegen command --help
 ```
 
 ## CLI Tooling / Playground

@@ -3,9 +3,11 @@ export function printCodegenHelp() {
 
 Commands:
   context <name> [--event-sourced]  Generate a new context
+  command <context> <name>         Generate a new command
 
 Examples:
   app codegen context TaskManagement
   app codegen context TaskManagement --event-sourced
+  app codegen command TaskManagement AddTodo
 `);
 }

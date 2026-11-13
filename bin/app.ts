@@ -201,14 +201,16 @@ function printCodegenHelp() {
 
 Commands:
   context <name> [--event-sourced]  Generate a new context
+  command <context> <name>         Generate a new command
 
 Examples:
   app codegen context TaskManagement
   app codegen context TaskManagement --event-sourced
+  app codegen command TaskManagement AddTodo
 `);
 }
 
-function main() {
+async function main() {
   let args = process.argv.slice(2);
 
   // Handle --help flag
@@ -231,7 +233,7 @@ function main() {
   const commandArgs = args.slice(1);
 
   if (command === 'codegen') {
-    const { handleCodegen } = require('../codegen/command');
+    const { handleCodegen } = await import('../codegen/command.js');
     handleCodegen(commandArgs);
     return;
   }
