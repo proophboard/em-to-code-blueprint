@@ -14,6 +14,8 @@ import {InformationApplyMapping} from "@lib/types/event-registry";
 import {InMemoryJobQueue} from "@lib/job-queue/in-memory-job-queue";
 import {jobs} from "./job-automations";
 import {JobQueue} from "@lib/job-queue/job-queue";
+import {queries} from "./queries";
+import {NotFoundError} from "@lib/error/not-found-error";
 
 const handle = async (cmd: Command) => {
   const store = services.get<MultiModelStore>(SERVICE_KEY_MULTI_MODEL_STORE);
@@ -32,7 +34,7 @@ const handle = async (cmd: Command) => {
   const handler = commands[cmd.name];
 
   if (!handler) {
-    throw new Error(`Command ${cmd.name} unknown`);
+    throw new NotFoundError(`Command ${cmd.name} unknown`);
   }
 
   logger.logCommand(`Preparing command handler for ${cmd.name}`, cmd);
@@ -192,6 +194,12 @@ const applyEventToInformation = async (event: Event, apply: InformationApplyMapp
   logger.logEvent(`Applying event ${event.name} to information ${apply.information}`, state);
 
   return apply.exec(event, state);
+}
+
+const resolve = async (query: Query): Promise<object | object[]> => {
+  if(!queries[query.name]) {
+    throw new NotFoundError(`Query ${query.name} is unknown`);
+  }
 }
 
 export default {

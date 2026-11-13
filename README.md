@@ -52,6 +52,14 @@ Entities do exist in the data model - the `information` part, when you give an o
 
 See [Functional Approach](fucntional-approach.md) for details.
 
+### Your question here?
+
+Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues).
+
+## CLI Tooling
+
+
+
 ## Todo
 
 - [ ] Test Scenario Runner
