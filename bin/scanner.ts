@@ -96,5 +96,5 @@ function parseRegistryFile(filePath: string, exportName: string): string[] {
  */
 export function getDomainPath(projectRoot?: string): string {
   const base = projectRoot || process.cwd();
-  return resolve(base, 'example', 'src', 'domain');
+  return resolve(base, 'src', 'domain');
 }

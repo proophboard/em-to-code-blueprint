@@ -74,7 +74,7 @@ npx app codegen context TaskManagement --event-sourced
 - `--event-sourced` - Enable event sourcing mode (uses `index.es.ts.tpl` template)
 
 The command:
-1. Creates a directory in `example/src/domain/` using kebab-case (e.g., `task-management`)
+1. Creates a directory in `src/domain/` using kebab-case (e.g., `task-management`)
 2. Copies all blueprint files except `index.*`
 3. Creates empty subdirectories (`commands/`, `events/`, `automations/`, `information/`)
 4. Copies the appropriate index template (`index.es.ts.tpl` or `index.no-es.ts.tpl`)
@@ -98,7 +98,7 @@ npx app codegen command TaskManagement TaskManagement.UpdateTodo
 The command:
 1. Validates that the context exists (suggests `app codegen context` if not)
 2. Validates that the command is not already registered
-3. Creates a new folder `example/src/domain/[context]/commands/[command-name]`
+3. Creates a new folder `src/domain/[context]/commands/[command-name]`
 4. Copies blueprint files (`prepare.ts`, `handle.ts`, `payload.ts`, `state.ts`)
 5. Creates an empty `events/` folder (blueprint events are not copied)
 6. Adds the command to `commands.ts` with proper imports and registration
@@ -124,7 +124,7 @@ npx app codegen information TaskManagement TaskManagement.TodoList
 The command:
 1. Validates that the context exists (suggests `app codegen context` if not)
 2. Validates that the information is not already registered
-3. Creates a new folder `example/src/domain/[context]/information/[information-name]`
+3. Creates a new folder `src/domain/[context]/information/[information-name]`
 4. Copies blueprint files (`__information__.ts`, `query.ts`, `resolve.ts`) and creates `projection/` folder
 5. Renames `__information__.ts` to the information name in kebab-case (e.g., `todo-list.ts`)
 6. Replaces placeholders in files:
@@ -151,7 +151,7 @@ The command:
 1. Validates that the context exists (suggests `app codegen context` if not)
 2. Validates that the command exists in the context (suggests `app codegen command` if not)
 3. Validates that the event is not already registered
-4. Creates a new folder `example/src/domain/[context]/commands/[command]/events/[event-name]`
+4. Creates a new folder `src/domain/[context]/commands/[command]/events/[event-name]`
 5. Copies blueprint file (`__event__.ts`) into the event folder
 6. Renames `__event__.ts` to the event name in kebab-case (e.g., `todo-added.ts`)
 7. Replaces `__Event__` placeholder with PascalCase event name (without context)
@@ -188,7 +188,7 @@ List all available commands and queries grouped by context:
 npx app list
 ```
 
-The command dynamically scans `example/src/domain/*/commands.ts` and `example/src/domain/*/queries.ts` to discover all registered commands and queries.
+The command dynamically scans `src/domain/*/commands.ts` and `src/domain/*/queries.ts` to discover all registered commands and queries.
 
 #### `handle <command-name> <json-payload>`
 
