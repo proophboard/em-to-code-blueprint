@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, readd
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { getDomainPath } from '../bin/scanner';
+import { generateInformation } from './information.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -58,6 +59,35 @@ export function handleCodegen(args: string[]) {
     }
 
     generateCommand(contextName, commandName);
+  } else if (subCommand === 'information') {
+    if (subCommandArgs.length < 2) {
+      console.error('Error: Context and information name are required');
+      console.error('Usage: app codegen information [Context] [Name]');
+      console.error('Example: app codegen information TaskManagement TodoList');
+      printCodegenHelp();
+      process.exit(1);
+    }
+
+    const contextName = subCommandArgs[0];
+    const informationName = subCommandArgs[1];
+    
+    // Check for optional flags
+    const noQuery = subCommandArgs.includes('--no-query');
+    const noProjection = subCommandArgs.includes('--no-projection');
+
+    // Validate context name is in PascalCase
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(contextName)) {
+      console.error(`Error: Context name must be in PascalCase (e.g., TaskManagement): ${contextName}`);
+      process.exit(1);
+    }
+
+    // Validate information name is in PascalCase or already fully qualified
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(informationName) && !/^[A-Z][a-zA-Z0-9]+\.[A-Z][a-zA-Z0-9]*$/.test(informationName)) {
+      console.error(`Error: Information name must be in PascalCase (e.g., TodoList) or fully qualified (e.g., TaskManagement.TodoList): ${informationName}`);
+      process.exit(1);
+    }
+
+    generateInformation(contextName, informationName, noQuery, noProjection);
   } else {
     console.error(`Unknown codegen command: ${subCommand}`);
     printCodegenHelp();

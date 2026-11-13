@@ -1,1 +1,1 @@
-export type __information__ = {} /* Define readonly type of information */
+export type __Information__ = {} /* Define readonly type of information */

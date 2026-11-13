@@ -9,6 +9,7 @@ import { initializeMessageFactory, messageFactory } from '@lib/message-factory/m
 import { MachineClock } from '@lib/system-clock/machine-clock';
 import { CryptoUuidGenerator } from '@lib/uuid-generator/crypto-uuid-generator';
 import { validatePayload, getPayloadTypePath, getQueryTypePath } from './validator.js';
+import { printCodegenHelp } from '../codegen/help.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const require = createRequire(__filename);
@@ -193,20 +194,6 @@ Examples:
   app handle TaskManagement.AddTodo '{"title":"Test"}'
   app resolve TaskManagement.TodoList '{"status": "open"}'
   app codegen --help
-`);
-}
-
-function printCodegenHelp() {
-  console.log(`Usage: app codegen <command> [arguments]
-
-Commands:
-  context <name> [--event-sourced]  Generate a new context
-  command <context> <name>         Generate a new command
-
-Examples:
-  app codegen context TaskManagement
-  app codegen context TaskManagement --event-sourced
-  app codegen command TaskManagement AddTodo
 `);
 }
 

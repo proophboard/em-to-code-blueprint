@@ -103,6 +103,35 @@ The command:
 5. Creates an empty `events/` folder (blueprint events are not copied)
 6. Adds the command to `commands.ts` with proper imports and registration
 
+#### `information <context> <name> [--no-query] [--no-projection]`
+
+Generate a new information in an existing context:
+
+```bash
+npx app codegen information TaskManagement TodoList
+npx app codegen information TaskManagement TodoList --no-query --no-projection
+npx app codegen information TaskManagement TaskManagement.TodoList
+```
+
+**Arguments:**
+- `context` - Context name in PascalCase (e.g., `TaskManagement`)
+- `name` - Information name in PascalCase (e.g., `TodoList`) or fully qualified name (e.g., `TaskManagement.TodoList`)
+
+**Options:**
+- `--no-query` - Omit query.ts and resolve.ts files
+- `--no-projection` - Omit projection folder
+
+The command:
+1. Validates that the context exists (suggests `app codegen context` if not)
+2. Validates that the information is not already registered
+3. Creates a new folder `example/src/domain/[context]/information/[information-name]`
+4. Copies blueprint files (`__information__.ts`, `query.ts`, `resolve.ts`) and creates `projection/` folder
+5. Renames `__information__.ts` to the information name in kebab-case (e.g., `todo-list.ts`)
+6. Replaces placeholders in files:
+   - `__Information__` with PascalCase information name (without context)
+   - `__information__` with kebab-case information name
+7. Adds the information to `queries.ts` with proper imports and registration (unless `--no-query`)
+
 ### Help
 
 Get help for the codegen command:
@@ -117,6 +146,7 @@ Get help for a specific subcommand:
 ```bash
 npx app codegen context --help
 npx app codegen command --help
+npx app codegen information --help
 ```
 
 ## CLI Tooling / Playground
