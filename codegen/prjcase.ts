@@ -7,7 +7,7 @@ import { getDomainPath } from '../bin/scanner';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export function generateProjectionCase(contextName: string, informationName: string, eventName: string) {
+export function generateProjectionCase(contextName: string, informationName: string, eventName: string, asyncFlag: boolean = false, addsTodoFlag: boolean = false) {
   const domainPath = getDomainPath();
   
   // Normalize information name - if already fully qualified, extract just the information part
@@ -222,8 +222,8 @@ export function generateProjectionCase(contextName: string, informationName: str
     const newEntry = `
       {
         information: "${informationFqcn}",
-        inline: true,
-        addsTodoJob: false,
+        inline: ${!asyncFlag},
+        addsTodoJob: ${addsTodoFlag},
         prepare: prepare${informationShortName}${eventShortName},
         exec: apply${informationShortName}${eventShortName}
       }`;
@@ -248,7 +248,7 @@ export function generateProjectionCase(contextName: string, informationName: str
     updatedEventsContent = updatedEventsContent.replace(oldEntry, newEntryFull);
   } else {
     // Event not registered yet, add it
-    const newEventEntry = `  "${eventFqcn}": {\n    apply: [\n      {\n        information: "${informationFqcn}",\n        inline: true,\n        addsTodoJob: false,\n        prepare: prepare${informationShortName}${eventShortName},\n        exec: apply${informationShortName}${eventShortName}\n      }\n    ],\n    automate: []\n  },`;
+    const newEventEntry = `  "${eventFqcn}": {\n    apply: [\n      {\n        information: "${informationFqcn}",\n        inline: ${!asyncFlag},\n        addsTodoJob: ${addsTodoFlag},\n        prepare: prepare${informationShortName}${eventShortName},\n        exec: apply${informationShortName}${eventShortName}\n      }\n    ],\n    automate: []\n  },`;
     
     // Insert before the closing brace
     const closingBraceMatch = updatedEventsContent.match(/\};$/m);

@@ -174,6 +174,10 @@ npx app codegen prjcase TaskManagement TaskManagement.TodoList TaskManagement.To
 - `information` - Information name in PascalCase (e.g., `TodoList`) or fully qualified name (e.g., `TaskManagement.TodoList`)
 - `event` - Event name in PascalCase (e.g., `TodoAdded`) or fully qualified name (e.g., `TaskManagement.TodoAdded`)
 
+**Options:**
+- `--async` - Set `inline: false` in the projection case config
+- `--adds-todo` - Set `addsTodoJob: true` in the projection case config
+
 The command:
 1. Validates that the context exists (suggests `app codegen context` if not)
 2. Validates that the information exists with a projection folder (suggests `app codegen information` if not)

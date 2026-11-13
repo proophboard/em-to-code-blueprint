@@ -135,6 +135,10 @@ export function handleCodegen(args: string[]) {
     const informationName = subCommandArgs[1];
     const eventName = subCommandArgs[2];
 
+    // Check for optional flags
+    const asyncFlag = subCommandArgs.includes('--async');
+    const addsTodoFlag = subCommandArgs.includes('--adds-todo');
+
     // Validate context name is in PascalCase
     if (!/^[A-Z][a-zA-Z0-9]*$/.test(contextName)) {
       console.error(`Error: Context name must be in PascalCase (e.g., TaskManagement): ${contextName}`);
@@ -153,7 +157,7 @@ export function handleCodegen(args: string[]) {
       process.exit(1);
     }
 
-    generateProjectionCase(contextName, informationName, eventName);
+    generateProjectionCase(contextName, informationName, eventName, asyncFlag, addsTodoFlag);
   } else {
     console.error(`Unknown codegen command: ${subCommand}`);
     printCodegenHelp();

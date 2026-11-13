@@ -12,6 +12,10 @@ Options:
   --no-query      Omit query.ts and resolve.ts files
   --no-projection Omit projection folder
 
+Options (prjcase):
+  --async       Set inline: false in the projection case config
+  --adds-todo   Set addsTodoJob: true in the projection case config
+
 Examples:
   app codegen context TaskManagement
   app codegen context TaskManagement --event-sourced
@@ -23,5 +27,7 @@ Examples:
   app codegen event TaskManagement TaskManagement.AddTodo TaskManagement.TodoAdded
   app codegen prjcase TaskManagement TodoList TodoAdded
   app codegen prjcase TaskManagement TodoList TaskManagement.TodoAdded
+  app codegen prjcase TaskManagement TodoList TodoAdded --async
+  app codegen prjcase TaskManagement TodoList TodoAdded --adds-todo
 `);
 }
