@@ -40,25 +40,9 @@ The Cody Engine is in itself a powerful, but complex tool. The learning curve is
 
 The blueprint helps you to map the still important parts to your own technology stack and fill the gap with AI-powered application logic.
 
-## FAQ
+## Code Generation CLI
 
-### Why are all functions split into `prepare` and `execute`?
-
-[Functional Approach](fucntional-approach.md)
-
-### Why no entities?
-
-Entities do exist in the data model - the `information` part, when you give an object an identifier. However, entities are not used to perform data changes. All changes go through `command -> handle() -> events -> apply() -> state` flows.
-
-See [Functional Approach](fucntional-approach.md) for details.
-
-### Your question here?
-
-Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues).
-
-## CLI Tooling / Playground
-
-The project includes a unified CLI tool `app` for managing commands and queries.
+The project includes a `codegen` command for generating new elements from the blueprint template.
 
 ### Installation
 
@@ -69,8 +53,47 @@ npm install
 ### Usage
 
 ```bash
-npx app <command> [arguments]
+npx app codegen <command> [arguments]
 ```
+
+### Commands
+
+#### `context <name> [--event-sourced]`
+
+Generate a new context with the specified name:
+
+```bash
+npx app codegen context TaskManagement
+npx app codegen context TaskManagement --event-sourced
+```
+
+**Arguments:**
+- `name` - Context name in PascalCase (e.g., `TaskManagement`, `CrmUserManagement`)
+
+**Options:**
+- `--event-sourced` - Enable event sourcing mode (uses `index.es.ts.tpl` template)
+
+The command:
+1. Creates a directory in `example/src/domain/` using kebab-case (e.g., `task-management`)
+2. Copies all blueprint files except `index.*`
+3. Creates empty subdirectories (`commands/`, `events/`, `automations/`, `information/`)
+4. Copies the appropriate index template (`index.es.ts.tpl` or `index.no-es.ts.tpl`)
+5. Replaces `__context__` placeholders:
+   - snake_case (`task_management`) in `index.ts`
+   - PascalCase (`TaskManagement`) in `services.ts`
+
+### Help
+
+Get help for the codegen command:
+
+```bash
+npx app codegen --help
+npx app codegen -h
+```
+
+## CLI Tooling / Playground
+
+The project includes a unified CLI tool `app` for managing commands and queries.
 
 ### Commands
 
@@ -144,6 +167,22 @@ npm run list
 npm run handle <command-name> <json-payload>
 npm run resolve <query-name> <json-payload>
 ```
+
+## FAQ
+
+### Why are all functions split into `prepare` and `execute`?
+
+[Functional Approach](fucntional-approach.md)
+
+### Why no entities?
+
+Entities do exist in the data model - the `information` part, when you give an object an identifier. However, entities are not used to perform data changes. All changes go through `command -> handle() -> events -> apply() -> state` flows.
+
+See [Functional Approach](fucntional-approach.md) for details.
+
+### Your question here?
+
+Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues).
 
 ## Todo
 
