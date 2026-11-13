@@ -176,19 +176,44 @@ export function generateInformation(contextName: string, informationName: string
     
     // Check if import already exists and add if needed
     if (!queriesContent.includes(`resolve${importName}`)) {
-      // Find the last import statement and insert after it
+      // Find the last import statement and insert after it (without blank line between imports)
       const importLines = queriesContent.split('\n').filter(line => line.trim().startsWith('import'));
       if (importLines.length > 0) {
         const lastImportLine = importLines[importLines.length - 1];
         const insertPos = queriesContent.indexOf(lastImportLine) + lastImportLine.length;
         const afterNewline = queriesContent.indexOf('\n', insertPos) + 1;
-        // Add blank line before new import for readability
-        queriesContent = queriesContent.slice(0, afterNewline) + '\n' + importLine + queriesContent.slice(afterNewline);
+        // Insert new import without blank line between imports
+        queriesContent = queriesContent.slice(0, afterNewline) + importLine + queriesContent.slice(afterNewline);
       } else {
         // No imports, add after the first line (import {QueryRegistry}...)
         const firstNewline = queriesContent.indexOf('\n');
-        // Ensure blank line between import block and export
-        queriesContent = queriesContent.slice(0, firstNewline + 1) + '\n' + importLine + '\n' + queriesContent.slice(firstNewline + 1);
+        // Add import without blank line after it (blank line will be added before export)
+        queriesContent = queriesContent.slice(0, firstNewline + 1) + importLine + queriesContent.slice(firstNewline + 1);
+      }
+      
+      // Ensure there's exactly one blank line between the last import and the export statement
+      const lines = queriesContent.split('\n');
+      let lastImportLineText = '';
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].trim().startsWith('import')) {
+          lastImportLineText = lines[i];
+          break;
+        }
+      }
+      const lastImportIdx = queriesContent.indexOf(lastImportLineText);
+      if (lastImportIdx >= 0) {
+        const afterImport = queriesContent.indexOf('\n', lastImportIdx + lastImportLineText.length);
+        if (afterImport >= 0) {
+          const remaining = queriesContent.slice(afterImport + 1);
+          // Check if next line (after potential whitespace) starts with 'export'
+          const nextNonEmptyLine = remaining.split('\n').find(line => line.trim().length > 0) || '';
+          if (nextNonEmptyLine.trim().startsWith('export')) {
+            // Replace any number of newlines with exactly one blank line before export
+            // Remove all leading newlines from remaining, then add exactly one
+            const trimmedRemaining = remaining.replace(/^\n+/, '');
+            queriesContent = queriesContent.slice(0, afterImport + 1) + '\n' + trimmedRemaining;
+          }
+        }
       }
     }
     

@@ -321,19 +321,44 @@ export function generateCommand(contextName: string, commandName: string) {
     
     // Check if imports already exist and add if needed
     if (!commandsContent.includes(`prepare${importName}`)) {
-      // Find the last import statement and insert after it
+      // Find the last import statement and insert after it (without blank line between imports)
       const importLines = commandsContent.split('\n').filter(line => line.trim().startsWith('import'));
       if (importLines.length > 0) {
         const lastImportLine = importLines[importLines.length - 1];
         const insertPos = commandsContent.indexOf(lastImportLine) + lastImportLine.length;
         const afterNewline = commandsContent.indexOf('\n', insertPos) + 1;
-        // Add blank line before new imports for readability (template already has blank lines, don't double up)
-        commandsContent = commandsContent.slice(0, afterNewline) + '\n' + importLine + '\n' + handleImportLine + '\n' + commandsContent.slice(afterNewline);
+        // Insert new imports without blank line between imports
+        commandsContent = commandsContent.slice(0, afterNewline) + importLine + '\n' + handleImportLine + commandsContent.slice(afterNewline);
       } else {
         // No imports, add after the first line (import {CommandRegistry}...)
         const firstNewline = commandsContent.indexOf('\n');
-        // Ensure blank line between import block and export
-        commandsContent = commandsContent.slice(0, firstNewline + 1) + '\n' + importLine + '\n' + handleImportLine + '\n' + commandsContent.slice(firstNewline + 1);
+        // Add imports without blank line after them (blank line will be added before export)
+        commandsContent = commandsContent.slice(0, firstNewline + 1) + importLine + '\n' + handleImportLine + commandsContent.slice(firstNewline + 1);
+      }
+      
+      // Ensure there's exactly one blank line between the last import and the export statement
+      const lines = commandsContent.split('\n');
+      let lastImportLineText = '';
+      for (let i = lines.length - 1; i >= 0; i--) {
+        if (lines[i].trim().startsWith('import')) {
+          lastImportLineText = lines[i];
+          break;
+        }
+      }
+      const lastImportIdx = commandsContent.indexOf(lastImportLineText);
+      if (lastImportIdx >= 0) {
+        const afterImport = commandsContent.indexOf('\n', lastImportIdx + lastImportLineText.length);
+        if (afterImport >= 0) {
+          const remaining = commandsContent.slice(afterImport + 1);
+          // Check if next line (after potential whitespace) starts with 'export'
+          const nextNonEmptyLine = remaining.split('\n').find(line => line.trim().length > 0) || '';
+          if (nextNonEmptyLine.trim().startsWith('export')) {
+            // Replace any number of newlines with exactly one blank line before export
+            // Remove all leading newlines from remaining, then add exactly one
+            const trimmedRemaining = remaining.replace(/^\n+/, '');
+            commandsContent = commandsContent.slice(0, afterImport + 1) + '\n' + trimmedRemaining;
+          }
+        }
       }
     }
     
