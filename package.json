@@ -28,9 +28,6 @@
     "app": "./bin/app.ts"
   },
   "scripts": {
-    "app:list": "tsx bin/app.ts list",
-    "app:handle": "tsx bin/app.ts handle",
-    "app:resolve": "tsx bin/app.ts resolve",
     "ts:check": "npx tsc --noEmit",
     "test": "vitest"
   },

@@ -189,6 +189,29 @@ The command:
 8. Replaces `__command__` and `__event__` in import paths with the actual command and event kebab-case names
 9. Adds the projection case to `events.ts` with proper imports and registration
 
+#### `job <context> <information> <automation>`
+
+Generate a new job automation for an existing information in a context:
+
+```bash
+npx app codegen job TaskManagement TodoList SendNotification
+npx app codegen job TaskManagement TodoList TaskManagement.SendNotification
+```
+
+**Arguments:**
+- `context` - Context name in PascalCase (e.g., `TaskManagement`)
+- `information` - Information name in PascalCase (e.g., `TodoList`) or fully qualified name (e.g., `TaskManagement.TodoList`)
+- `automation` - Automation name in PascalCase (e.g., `SendNotification`) or fully qualified name (e.g., `TaskManagement.SendNotification`)
+
+The command:
+1. Validates that the context exists (suggests `app codegen context` if not)
+2. Validates that the information exists with a projection folder (suggests `app codegen information` if not)
+3. Validates that the automation folder does not exist yet
+4. Creates a new folder `src/domain/[context]/automations/jobs/[automation-name]`
+5. Copies blueprint files (`prepare.ts`, `state.ts`, `process.ts`) into the automation folder
+6. Replaces `__Automation__` placeholder with PascalCase automation name (without context)
+7. Adds the job automation to `job-automations.ts` with proper imports and registration
+
 ### Help
 
 Get help for the codegen command:
@@ -271,16 +294,6 @@ Get help for the CLI:
 ```bash
 npx app --help
 npx app -h
-```
-
-### NPM Scripts (Legacy)
-
-The original npm scripts are still available for backward compatibility:
-
-```bash
-npm run list
-npm run handle <command-name> <json-payload>
-npm run resolve <query-name> <json-payload>
 ```
 
 ## FAQ

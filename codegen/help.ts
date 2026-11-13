@@ -3,10 +3,11 @@ export function printCodegenHelp() {
 
 Commands:
   context <name> [--event-sourced]  Generate a new context
-  command <context> <name>         Generate a new command
-  information <context> <name>     Generate a new information
-  event <context> <command> <name> Generate a new event
-  prjcase <context> <info> <event> Generate a new projection case
+  command <context> <name>          Generate a new command
+  information <context> <name>      Generate a new information
+  event <context> <command> <name>  Generate a new event
+  prjcase <context> <info> <event>  Generate a new projection case
+  job <context> <info> <automation> Generate a new job automation
 
 Options:
   --no-query      Omit query.ts and resolve.ts files
@@ -29,5 +30,7 @@ Examples:
   app codegen prjcase TaskManagement TodoList TaskManagement.TodoAdded
   app codegen prjcase TaskManagement TodoList TodoAdded --async
   app codegen prjcase TaskManagement TodoList TodoAdded --adds-todo
+  app codegen job TaskManagement TodoList SendNotification
+  app codegen job TaskManagement TodoList TaskManagement.SendNotification
 `);
 }
