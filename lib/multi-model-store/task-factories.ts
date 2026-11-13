@@ -3,9 +3,10 @@ import {EventMatcher} from "@lib/event-store/event-matcher";
 import {
   AppendEventsTask, DeleteDocumentTask,
   DeleteEventsTask, DeleteManyDocumentsTask,
-  InsertDocumentTask, ReplaceDocumentTask, ReplaceManyDocumentsTask, UpdateDocumentTask, UpdateManyDocumentsTask,
+  InsertDocumentTask, ReplaceDocumentTask, UpdateDocumentTask, UpdateManyDocumentsTask,
   UpsertDocumentTask
 } from "@lib/multi-model-store/session";
+import {Event} from "@lib/types/message";
 
 export function appendEventsTo(streamName: string, events: Event[], eventMatcher?: EventMatcher, expectedVersion?: number): AppendEventsTask {
   return {streamName, events, eventMatcher: eventMatcher, expectedVersion};

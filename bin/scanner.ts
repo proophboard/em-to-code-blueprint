@@ -52,11 +52,11 @@ export function scanDomain(domainPath: string): ScanResult {
  * Reads directory entries (folder names)
  */
 function readDirectoryEntries(dirPath: string): string[] {
-  return readdirSync(dirPath, { withFileTypes: false })
-    .filter(name => {
-      const fullPath = join(dirPath, name);
-      return existsSync(fullPath) && !name.startsWith('.');
-    });
+  const entries = readdirSync(dirPath, { withFileTypes: false }) as string[];
+  return entries.filter(name => {
+    const fullPath = join(dirPath, name);
+    return existsSync(fullPath) && !name.startsWith('.');
+  });
 }
 
 /**

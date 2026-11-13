@@ -200,6 +200,8 @@ const resolve = async (query: Query): Promise<object | object[]> => {
   if(!queries[query.name]) {
     throw new NotFoundError(`Query ${query.name} is unknown`);
   }
+
+  return await queries[query.name].resolve(query, services);
 }
 
 export default {
