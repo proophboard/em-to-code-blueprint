@@ -30,27 +30,27 @@ export class ConsoleLogger implements InformationFlowLogger {
   }
 
   logCommand = (msg: string, ...rest: unknown[]) => {
-    console.log(`${ANSI.bright}${ANSI.cyan}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
+    console.log(`${ANSI.cyan}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
   };
 
   logEvent = (msg: string, ...rest: unknown[]) => {
-    console.log(`${ANSI.bright}${ANSI.orange}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
+    console.log(`${ANSI.orange}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
   };
 
   logInformation = (msg: string, ...rest: unknown[]) => {
-    console.log(`${ANSI.bright}${ANSI.green}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
+    console.log(`${ANSI.green}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
   };
 
   logAutomation = (msg: string, ...rest: unknown[]) => {
-    console.log(`${ANSI.bright}${ANSI.magenta}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
+    console.log(`${ANSI.magenta}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
   };
 
   logHotspot = (msg: string, ...rest: unknown[]) => {
-    console.log(`${ANSI.bright}${ANSI.red}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
+    console.log(`${ANSI.red}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
   };
 
   logService = (msg: string, ...rest: unknown[]) => {
-    console.log(`${ANSI.bright}${ANSI.pink}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
+    console.log(`${ANSI.pink}[${this.prefix}] ${msg}`, ...rest, `${ANSI.reset}`);
   };
 
   log = (...rest: unknown[]) => {
