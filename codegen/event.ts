@@ -83,7 +83,7 @@ export function generateEvent(contextName: string, commandName: string, eventNam
   console.log(`  Command name: ${commandShortName} -> ${commandKebabCase}`);
   console.log(`  Event name: ${eventShortName} -> ${eventKebabCase}`);
   console.log(`  Event FQCN: ${eventFqcn}`);
-  console.log(`  Target directory: ${contextDir}/commands/${commandKebabCase}/events/${eventKebabCase}`);
+  console.log(`  Target file: ${contextDir}/commands/${commandKebabCase}/events/${eventKebabCase}.ts`);
   
   // Validate context exists
   if (!existsSync(contextDir)) {
@@ -127,16 +127,7 @@ export function generateEvent(contextName: string, commandName: string, eventNam
     console.log(`✓ Created events directory: ${commandEventsDir}`);
   }
   
-  // Create event directory
-  const targetEventDir = join(commandEventsDir, eventKebabCase);
-  if (existsSync(targetEventDir)) {
-    console.error(`Error: Event directory already exists: ${targetEventDir}`);
-    process.exit(1);
-  }
-  mkdirSync(targetEventDir, { recursive: true });
-  console.log(`✓ Created event directory: ${targetEventDir}`);
-  
-  // Copy file from blueprint
+  // Copy file from blueprint directly into events folder
   const blueprintPath = join(__dirname, '..', 'blueprint', 'domain', '__context__', 'commands', '__command__', 'events', '__event__.ts');
   
   if (!existsSync(blueprintPath)) {
@@ -144,7 +135,7 @@ export function generateEvent(contextName: string, commandName: string, eventNam
     process.exit(1);
   }
   
-  const targetEventFile = join(targetEventDir, `${eventKebabCase}.ts`);
+  const targetEventFile = join(commandEventsDir, `${eventKebabCase}.ts`);
   copyFileSync(blueprintPath, targetEventFile);
   console.log(`  ✓ Copied: __event__.ts -> ${eventKebabCase}.ts`);
   
@@ -154,55 +145,8 @@ export function generateEvent(contextName: string, commandName: string, eventNam
   writeFileSync(targetEventFile, content, 'utf-8');
   console.log(`  ✓ Updated: ${eventKebabCase}.ts with event name`);
   
-  // Add event to events.ts registry
+  // Add event to events.ts registry (only the entry, no imports needed)
   let updatedEventsContent = eventsContent;
-  
-  // Generate import statements for prepare and exec
-  const prepareImportLine = `import prepare${eventShortName} from "./commands/${commandKebabCase}/events/${eventKebabCase}/prepare";`;
-  const execImportLine = `import handle${eventShortName} from "./commands/${commandKebabCase}/events/${eventKebabCase}/handle";`;
-  
-  // Check if imports already exist and add if needed
-  if (!updatedEventsContent.includes(`prepare${eventShortName}`)) {
-    // Find the last import statement and insert after it (without blank line between imports)
-    const importLines = updatedEventsContent.split('\n').filter(line => line.trim().startsWith('import'));
-    if (importLines.length > 0) {
-      const lastImportLine = importLines[importLines.length - 1];
-      const insertPos = updatedEventsContent.indexOf(lastImportLine) + lastImportLine.length;
-      const afterNewline = updatedEventsContent.indexOf('\n', insertPos) + 1;
-      // Insert new imports without blank line between imports
-      updatedEventsContent = updatedEventsContent.slice(0, afterNewline) + prepareImportLine + '\n' + execImportLine + updatedEventsContent.slice(afterNewline);
-    } else {
-      // No imports, add after the first line (import {EventRegistry}...)
-      const firstNewline = updatedEventsContent.indexOf('\n');
-      // Add imports without blank line after them (blank line will be added before export)
-      updatedEventsContent = updatedEventsContent.slice(0, firstNewline + 1) + prepareImportLine + '\n' + execImportLine + updatedEventsContent.slice(firstNewline + 1);
-    }
-    
-    // Ensure there's exactly one blank line between the last import and the export statement
-    const lines = updatedEventsContent.split('\n');
-    let lastImportLineText = '';
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (lines[i].trim().startsWith('import')) {
-        lastImportLineText = lines[i];
-        break;
-      }
-    }
-    const lastImportIdx = updatedEventsContent.indexOf(lastImportLineText);
-    if (lastImportIdx >= 0) {
-      const afterImport = updatedEventsContent.indexOf('\n', lastImportIdx + lastImportLineText.length);
-      if (afterImport >= 0) {
-        const remaining = updatedEventsContent.slice(afterImport + 1);
-        // Check if next line (after potential whitespace) starts with 'export'
-        const nextNonEmptyLine = remaining.split('\n').find(line => line.trim().length > 0) || '';
-        if (nextNonEmptyLine.trim().startsWith('export')) {
-          // Replace any number of newlines with exactly one blank line before export
-          // Remove all leading newlines from remaining, then add exactly one
-          const trimmedRemaining = remaining.replace(/^\n+/, '');
-          updatedEventsContent = updatedEventsContent.slice(0, afterImport + 1) + '\n' + trimmedRemaining;
-        }
-      }
-    }
-  }
   
   // Add event registration with proper formatting
   // Events are registered at the event FQCN level with apply and automate arrays
