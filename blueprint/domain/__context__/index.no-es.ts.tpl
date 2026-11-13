@@ -14,6 +14,7 @@ import {InformationApplyMapping} from "@lib/types/event-registry";
 import {InMemoryJobQueue} from "@lib/job-queue/in-memory-job-queue";
 import {jobs} from "./job-automations";
 import {JobQueue} from "@lib/job-queue/job-queue";
+import {queries} from "./queries";
 import {NotFoundError} from "@lib/error/not-found-error";
 
 const handle = async (cmd: Command) => {
@@ -65,6 +66,8 @@ const handle = async (cmd: Command) => {
     jobQueue.scheduleJobRuns(todolistsToSchedule);
   }
 
+  // In-process event publishing
+  // @todo: Change for mission-critical production systems
   events.forEach(evt => {
     if(eventRegistry[evt.name]) {
       eventRegistry[evt.name].automate.forEach(async (automateMapping) => {
@@ -127,7 +130,25 @@ const applyEventToInformation = async (event: Event, apply: InformationApplyMapp
   return apply.exec(event, state);
 }
 
+const resolve = async (query: Query): Promise<object | object[]> => {
+  const logger = services.get<InformationFlowLogger>(SERVICE_KEY_INFORMATION_FLOW_LOGGER);
+
+  const handler = queries[query.name];
+
+  if (!handler) {
+    throw new Error(`Query ${query.name} unknown`);
+  }
+
+  logger.logInformation(`Resolving query ${query.name}`);
+
+  const result = await handler.resolve(query, services);
+
+  logger.logInformation(`Query ${query.name} resolved: `, result);
+
+  return result;
+}
+
 export default {
   handle,
-  apply: applyAll,
+  resolve,
 }

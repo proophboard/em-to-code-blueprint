@@ -186,11 +186,25 @@ Commands:
   list                    List all available commands and queries
   handle <name> <payload> Execute a command with JSON payload
   resolve <name> <payload> Execute a query with JSON payload
+  codegen                 Code generation commands
 
 Examples:
   app list
   app handle TaskManagement.AddTodo '{"title":"Test"}'
   app resolve TaskManagement.TodoList '{"status": "open"}'
+  app codegen --help
+`);
+}
+
+function printCodegenHelp() {
+  console.log(`Usage: app codegen <command> [arguments]
+
+Commands:
+  context <name> [--event-sourced]  Generate a new context
+
+Examples:
+  app codegen context TaskManagement
+  app codegen context TaskManagement --event-sourced
 `);
 }
 
@@ -199,7 +213,12 @@ function main() {
 
   // Handle --help flag
   if (args.includes('--help') || args.includes('-h')) {
-    printHelp();
+    // Check if it's codegen --help
+    if (args[0] === 'codegen') {
+      printCodegenHelp();
+    } else {
+      printHelp();
+    }
     return;
   }
 
@@ -210,6 +229,12 @@ function main() {
 
   const command = args[0];
   const commandArgs = args.slice(1);
+
+  if (command === 'codegen') {
+    const { handleCodegen } = require('../codegen/command');
+    handleCodegen(commandArgs);
+    return;
+  }
 
   const domainPath = getDomainPath();
   const scanResult = scanDomain(domainPath);
