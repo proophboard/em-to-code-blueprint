@@ -157,6 +157,34 @@ The command:
 7. Replaces `__Event__` placeholder with PascalCase event name (without context)
 8. Adds the event to `events.ts` with proper imports and registration
 
+
+#### `prjcase <context> <information> <event>`
+
+Generate a new projection case for an existing information and event in a context:
+
+```bash
+npx app codegen prjcase TaskManagement TodoList TodoAdded
+npx app codegen prjcase TaskManagement TodoList TaskManagement.TodoAdded
+npx app codegen prjcase TaskManagement TaskManagement.TodoList TodoAdded
+npx app codegen prjcase TaskManagement TaskManagement.TodoList TaskManagement.TodoAdded
+```
+
+**Arguments:**
+- `context` - Context name in PascalCase (e.g., `TaskManagement`)
+- `information` - Information name in PascalCase (e.g., `TodoList`) or fully qualified name (e.g., `TaskManagement.TodoList`)
+- `event` - Event name in PascalCase (e.g., `TodoAdded`) or fully qualified name (e.g., `TaskManagement.TodoAdded`)
+
+The command:
+1. Validates that the context exists (suggests `app codegen context` if not)
+2. Validates that the information exists with a projection folder (suggests `app codegen information` if not)
+3. Validates that the event is registered in a command (suggests `app codegen event` if not)
+4. Validates that the projection case folder does not exist yet
+5. Creates a new folder `src/domain/[context]/information/[information]/projection/[event-name]`
+6. Copies blueprint files (`apply.ts`, `prepare.ts`, `state.ts`) into the event folder
+7. Replaces `__Event__` placeholder with PascalCase event name
+8. Replaces `__command__` and `__event__` in import paths with the actual command and event kebab-case names
+9. Adds the projection case to `events.ts` with proper imports and registration
+
 ### Help
 
 Get help for the codegen command:
@@ -272,31 +300,4 @@ Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues
 - [ ] Test Scenario Runner
 - [ ] Frontend Guidance
 - [ ] Public context method to consume events
-#### `prjcase <context> <information> <event>`
 
-Generate a new projection case for an existing information and event in a context:
-
-```bash
-npx app codegen prjcase TaskManagement TodoList TodoAdded
-npx app codegen prjcase TaskManagement TodoList TaskManagement.TodoAdded
-npx app codegen prjcase TaskManagement TaskManagement.TodoList TodoAdded
-npx app codegen prjcase TaskManagement TaskManagement.TodoList TaskManagement.TodoAdded
-```
-
-**Arguments:**
-- `context` - Context name in PascalCase (e.g., `TaskManagement`)
-- `information` - Information name in PascalCase (e.g., `TodoList`) or fully qualified name (e.g., `TaskManagement.TodoList`)
-- `event` - Event name in PascalCase (e.g., `TodoAdded`) or fully qualified name (e.g., `TaskManagement.TodoAdded`)
-
-The command:
-1. Validates that the context exists (suggests `app codegen context` if not)
-2. Validates that the information exists with a projection folder (suggests `app codegen information` if not)
-3. Validates that the event is registered in a command (suggests `app codegen event` if not)
-4. Validates that the projection case folder does not exist yet
-5. Creates a new folder `src/domain/[context]/information/[information]/projection/[event-name]`
-6. Copies blueprint files (`apply.ts`, `prepare.ts`, `state.ts`) into the event folder
-7. Replaces `__Event__` placeholder with PascalCase event name
-8. Replaces `__command__` and `__event__` in import paths with the actual command and event kebab-case names
-9. Adds the projection case to `events.ts` with proper imports and registration
-
-### Help
