@@ -197,11 +197,21 @@ const applyEventToInformation = async (event: Event, apply: InformationApplyMapp
 }
 
 const resolve = async (query: Query): Promise<object | object[]> => {
-  if(!queries[query.name]) {
-    throw new NotFoundError(`Query ${query.name} is unknown`);
+  const logger = services.get<InformationFlowLogger>(SERVICE_KEY_INFORMATION_FLOW_LOGGER);
+
+  const handler = queries[query.name];
+
+  if (!handler) {
+    throw new Error(`Query ${query.name} unknown`);
   }
 
-  return await queries[query.name].resolve(query, services);
+  logger.logInformation(`Resolving query ${query.name}`);
+
+  const result = await handler.resolve(query, services);
+
+  logger.logInformation(`Query ${query.name} resolved: `, result);
+
+  return result;
 }
 
 export default {

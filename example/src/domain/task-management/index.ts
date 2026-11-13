@@ -116,6 +116,8 @@ const resolve = async (query: Query) => {
   const result = await handler.resolve(query, services);
 
   logger.logInformation(`Query ${query.name} resolved: `, result);
+
+  return result;
 };
 
 const applyAll = async (event: Event): Promise<SessionTask[]> => {
