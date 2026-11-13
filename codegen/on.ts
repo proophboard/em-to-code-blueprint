@@ -190,23 +190,54 @@ export function generateOn(contextName: string, eventName: string, automationNam
   let updatedEventsContent = eventsContent;
 
   // Find the event entry and update its automate array
-  const eventEntryPattern = new RegExp(`"(${eventFqcn})":\\s*\\{([^}]+)\\}`, 's');
-  const match = updatedEventsContent.match(eventEntryPattern);
-
-  if (match) {
-    // Event is already registered, update the automate array
-    const existingEntryContent = match[2];
-
+  // Find the position of the event FQCN in the content
+  const eventFqcnEscaped = eventFqcn.replace(/[$()*+.?[\\\]^{|}]/g, '\\$&');
+  const eventIndex = updatedEventsContent.indexOf(`"${eventFqcn}"`);
+  
+  if (eventIndex >= 0) {
+    // Event is already registered, find its entry and update the automate array
+    // Find the opening brace after the event FQCN
+    const openBraceIndex = updatedEventsContent.indexOf('{', eventIndex);
+    if (openBraceIndex < 0) {
+      console.error(`Error: Could not find opening brace for event "${eventFqcn}"`);
+      process.exit(1);
+    }
+    
+    // Find the closing brace - we need to find the matching closing brace for the event entry
+    // Count braces to find the correct closing position
+    let braceCount = 0;
+    let closeBraceIndex = -1;
+    for (let i = openBraceIndex; i < updatedEventsContent.length; i++) {
+      if (updatedEventsContent[i] === '{') {
+        braceCount++;
+      } else if (updatedEventsContent[i] === '}') {
+        braceCount--;
+        if (braceCount === 0) {
+          closeBraceIndex = i;
+          break;
+        }
+      }
+    }
+    
+    if (closeBraceIndex < 0) {
+      console.error(`Error: Could not find closing brace for event "${eventFqcn}"`);
+      process.exit(1);
+    }
+    
+    // Extract the event content
+    const fullEventEntry = updatedEventsContent.slice(eventIndex, closeBraceIndex + 1);
+    const eventContent = updatedEventsContent.slice(openBraceIndex + 1, closeBraceIndex);
+    
     // Check if this automation is already in the automate array
-    if (existingEntryContent.includes(`automation: "${automationFqcn}"`)) {
+    if (eventContent.includes(`automation: "${automationFqcn}"`)) {
       console.error(`Error: Event automation "${automationFqcn}" for event "${eventFqcn}" is already registered.`);
       process.exit(1);
     }
-
+    
     // Extract the current automate array content
-    const automateMatch = existingEntryContent.match(/automate:\s*\[\s*([\s\S]*?)\s*\]/);
+    const automateMatch = eventContent.match(/automate:\s*\[\s*([\s\S]*?)\s*\]/);
     const currentAutomateContent = automateMatch ? automateMatch[1].trim() : '';
-
+    
     // Build the new automate array with the existing entries plus the new one
     const newEntry = `
       {
@@ -215,7 +246,7 @@ export function generateOn(contextName: string, eventName: string, automationNam
         prepare: prepare${automationShortName},
         exec: on${automationShortName}
       }`;
-
+    
     let newAutomateContent = '';
     if (currentAutomateContent.length > 0) {
       // Check if there are other entries (comma before ])
@@ -225,19 +256,19 @@ export function generateOn(contextName: string, eventName: string, automationNam
     } else {
       newAutomateContent = newEntry;
     }
-
-    // Build the new entry content
-    const newEntryContent = `\n    automate: [\n${newAutomateContent}\n    ]\n  `;
-
-    // Replace the entire event entry
-    const oldEntry = `"${eventFqcn}": {` + match[2] + `}`;
-    const newEntryFull = `"${eventFqcn}": {` + newEntryContent + `}`;
-
-    updatedEventsContent = updatedEventsContent.replace(oldEntry, newEntryFull);
+    
+    // Build the new automate array string
+    const newAutomateArray = `automate: [\n${newAutomateContent}\n    ]`;
+    
+    // Find and replace the automate array
+    const oldAutomatePattern = /automate:\s*\[\s*[\s\S]*?\s*\]/;
+    const newFullEventEntry = fullEventEntry.replace(oldAutomatePattern, newAutomateArray);
+    
+    updatedEventsContent = updatedEventsContent.replace(fullEventEntry, newFullEventEntry);
   } else {
     // Event not registered yet, add it
     const newEventEntry = `  "${eventFqcn}": {\n    apply: [],\n    automate: [\n      {\n        automation: "${automationFqcn}",\n        inline: ${!asyncFlag},\n        prepare: prepare${automationShortName},\n        exec: on${automationShortName}\n      }\n    ]\n  },`;
-
+    
     // Insert before the closing brace
     const closingBraceMatch = updatedEventsContent.match(/\};$/m);
     if (closingBraceMatch) {
