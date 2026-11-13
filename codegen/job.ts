@@ -172,13 +172,13 @@ export function generateJob(contextName: string, informationName: string, automa
 
   // Generate import statements
   const importPrepare = `import prepare${automationShortName} from "./automations/jobs/${automationKebabCase}/prepare";`;
-  const importProcess = `import process${automationShortName} from "./automations/jobs/${automationKebabCase}/process";`;
+  const importExec = `import process${automationShortName} from "./automations/jobs/${automationKebabCase}/process";`;
 
   // Check if imports already exist
   const hasPrepareImport = jobAutomationsContent.includes(`prepare${automationShortName}`);
-  const hasProcessImport = jobAutomationsContent.includes(`process${automationShortName}`);
+  const hasExecImport = jobAutomationsContent.includes(`process${automationShortName}`);
 
-  if (!hasPrepareImport || !hasProcessImport) {
+  if (!hasPrepareImport || !hasExecImport) {
     // Find the last import statement and insert after it (without blank line between imports)
     const importLines = jobAutomationsContent.split('\n').filter(line => line.trim().startsWith('import'));
     if (importLines.length > 0) {
@@ -186,12 +186,12 @@ export function generateJob(contextName: string, informationName: string, automa
       const insertPos = jobAutomationsContent.indexOf(lastImportLine) + lastImportLine.length;
       const afterNewline = jobAutomationsContent.indexOf('\n', insertPos) + 1;
       // Insert new imports without blank line between imports
-      jobAutomationsContent = jobAutomationsContent.slice(0, afterNewline) + importPrepare + '\n' + importProcess + jobAutomationsContent.slice(afterNewline);
+      jobAutomationsContent = jobAutomationsContent.slice(0, afterNewline) + importPrepare + '\n' + importExec + jobAutomationsContent.slice(afterNewline);
     } else {
       // No imports, add after the first line (import {JobAutomationRegistry}...)
       const firstNewline = jobAutomationsContent.indexOf('\n');
       // Add imports without blank line after them (blank line will be added before export)
-      jobAutomationsContent = jobAutomationsContent.slice(0, firstNewline + 1) + importPrepare + '\n' + importProcess + jobAutomationsContent.slice(firstNewline + 1);
+      jobAutomationsContent = jobAutomationsContent.slice(0, firstNewline + 1) + importPrepare + '\n' + importExec + jobAutomationsContent.slice(firstNewline + 1);
     }
 
     // Ensure there's exactly one blank line between the last import and the export statement
@@ -221,7 +221,7 @@ export function generateJob(contextName: string, informationName: string, automa
   }
 
   // Add job automation registration
-  const jobEntry = `  "${automationFqcn}": {\n    information: "${informationFqcn}",\n    prepare: prepare${automationShortName},\n    process: process${automationShortName}\n  },`;
+  const jobEntry = `  "${automationFqcn}": {\n    todoList: "${informationFqcn}",\n    prepare: prepare${automationShortName},\n    exec: process${automationShortName}\n  },`;
 
   // Insert before the closing brace
   const closingBraceMatch = jobAutomationsContent.match(/\};$/m);
