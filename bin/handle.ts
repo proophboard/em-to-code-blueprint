@@ -1,12 +1,13 @@
 #!/usr/bin/env tsx
 import {scanDomain, getDomainPath} from './scanner';
-import {existsSync, readFileSync} from 'fs';
-import {join, resolve, dirname} from 'path';
+import {existsSync} from 'fs';
+import {join, resolve} from 'path';
 import {fileURLToPath} from 'url';
 import {createRequire} from 'module';
-import {initializeMessageFactory} from "@lib/message-factory/message-factory";
+import {initializeMessageFactory, messageFactory} from "@lib/message-factory/message-factory";
 import {MachineClock} from "@lib/system-clock/machine-clock";
 import {CryptoUuidGenerator} from "@lib/uuid-generator/crypto-uuid-generator";
+import {validatePayload, getPayloadTypePath} from './validator.js';
 
 // Support both ESM (tsx) and CJS (node) contexts
 const __filename = fileURLToPath(import.meta.url);
@@ -52,6 +53,21 @@ async function main() {
     process.exit(1);
   }
   
+  // Validate payload against TypeScript type
+  const payloadTypePath = getPayloadTypePath(domainPath, contextName, commandName);
+  if (existsSync(payloadTypePath)) {
+    try {
+      validatePayload(payload, payloadTypePath);
+      console.log(`✓ Payload validation passed for command: ${commandName}`);
+    } catch (e) {
+      console.error('\nPayload validation failed:');
+      console.error(e);
+      process.exit(1);
+    }
+  } else {
+    console.log(`⚠ No payload type definition found at: ${payloadTypePath}. Skipping validation.`);
+  }
+  
   // Load context module
   const contextModulePath = join(domainPath, contextName, 'index.ts');
   if (!existsSync(contextModulePath)) {
@@ -63,13 +79,8 @@ async function main() {
   const contextModulePathResolved = resolve(contextModulePath);
   const contextModule = await import(contextModulePathResolved);
   
-  // Create command message object
-  const command = {
-    name: commandName,
-    payload,
-    timestamp: new Date().toISOString(),
-    id: `cmd-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`
-  };
+  // Create command message using message factory
+  const command = messageFactory().makeCommand(commandName, payload, undefined);
   
   // Invoke handle
   console.log(`Executing command: ${command.name}`);

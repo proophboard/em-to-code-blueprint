@@ -40,7 +40,7 @@ const ds = makeInMemoryDocumentStore();
 const serviceMap: Record<string, any> = {
   [SERVICE_KEY_SYSTEM_CLOCK]: new MachineClock(),
   [SERVICE_KEY_UUID_GENERATOR]: uuid(),
-  [SERVICE_KEY_INFORMATION_FLOW_LOGGER]: new ConsoleLogger('__context__'),
+  [SERVICE_KEY_INFORMATION_FLOW_LOGGER]: new ConsoleLogger('TaskManagement'),
   [SERVICE_KEY_EVENT_STORE]: es,
   [SERVICE_KEY_DOCUMENT_STORE]: ds,
   [SERVICE_KEY_MULTI_MODEL_STORE]: makeInMemoryMultiModelStore(es, ds),
