@@ -132,6 +132,31 @@ The command:
    - `__information__` with kebab-case information name
 7. Adds the information to `queries.ts` with proper imports and registration (unless `--no-query`)
 
+#### `event <context> <command> <name>`
+
+Generate a new event for an existing command in a context:
+
+```bash
+npx app codegen event TaskManagement AddTodo TodoAdded
+npx app codegen event TaskManagement TaskManagement.AddTodo TodoAdded
+npx app codegen event TaskManagement TaskManagement.AddTodo TaskManagement.TodoAdded
+```
+
+**Arguments:**
+- `context` - Context name in PascalCase (e.g., `TaskManagement`)
+- `command` - Command name in PascalCase (e.g., `AddTodo`) or fully qualified name (e.g., `TaskManagement.AddTodo`)
+- `name` - Event name in PascalCase (e.g., `TodoAdded`) or fully qualified name (e.g., `TaskManagement.TodoAdded`)
+
+The command:
+1. Validates that the context exists (suggests `app codegen context` if not)
+2. Validates that the command exists in the context (suggests `app codegen command` if not)
+3. Validates that the event is not already registered
+4. Creates a new folder `example/src/domain/[context]/commands/[command]/events/[event-name]`
+5. Copies blueprint file (`__event__.ts`) into the event folder
+6. Renames `__event__.ts` to the event name in kebab-case (e.g., `todo-added.ts`)
+7. Replaces `__Event__` placeholder with PascalCase event name (without context)
+8. Adds the event to `events.ts` with proper imports and registration
+
 ### Help
 
 Get help for the codegen command:
