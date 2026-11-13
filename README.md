@@ -212,6 +212,34 @@ The command:
 6. Replaces `__Automation__` placeholder with PascalCase automation name (without context)
 7. Adds the job automation to `job-automations.ts` with proper imports and registration
 
+#### `on <context> <event> <automation> [--async]`
+
+Generate a new event automation for an existing event in a context:
+
+```bash
+npx app codegen on TaskManagement TodoAdded SendNotification
+npx app codegen on TaskManagement TaskManagement.TodoAdded TaskManagement.SendNotification
+npx app codegen on TaskManagement TodoAdded SendNotification --async
+```
+
+**Arguments:**
+- `context` - Context name in PascalCase (e.g., `TaskManagement`)
+- `event` - Event name in PascalCase (e.g., `TodoAdded`) or fully qualified name (e.g., `TaskManagement.TodoAdded`)
+- `automation` - Automation name in PascalCase (e.g., `SendNotification`) or fully qualified name (e.g., `TaskManagement.SendNotification`)
+
+**Options:**
+- `--async` - Set `inline: false` in the event automation config
+
+The command:
+1. Validates that the context exists (suggests `app codegen context` if not)
+2. Validates that the event is registered in the context (suggests `app codegen event` if not)
+3. Validates that the automation folder does not exist yet in the `automations/events/` folder
+4. Creates a new folder `src/domain/[context]/automations/events/[automation-name]`
+5. Copies blueprint files (`on.ts`, `prepare.ts`, `state.ts`) into the automation folder
+6. Replaces `__Event__` placeholder with PascalCase event name
+7. Replaces `__command__` and `__event__` in import paths with the actual command and event kebab-case names
+8. Adds the event automation to `events.ts` with proper imports and registration
+
 ### Help
 
 Get help for the codegen command:
@@ -320,4 +348,3 @@ Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues
 - [ ] External Events
 - [ ] Public context method to consume external events
 - [ ] [spec-stream](https://github.com/proophboard/spec-stream) config
-

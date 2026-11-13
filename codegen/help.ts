@@ -8,6 +8,7 @@ Commands:
   event <context> <command> <name>  Generate a new event
   prjcase <context> <info> <event>  Generate a new projection case
   job <context> <info> <automation> Generate a new job automation
+  on <context> <event> <automation> Generate a new event automation
 
 Options:
   --no-query      Omit query.ts and resolve.ts files
@@ -16,6 +17,9 @@ Options:
 Options (prjcase):
   --async       Set inline: false in the projection case config
   --adds-todo   Set addsTodoJob: true in the projection case config
+
+Options (on):
+  --async  Set inline: false in the event automation config
 
 Examples:
   app codegen context TaskManagement
@@ -32,5 +36,8 @@ Examples:
   app codegen prjcase TaskManagement TodoList TodoAdded --adds-todo
   app codegen job TaskManagement TodoList SendNotification
   app codegen job TaskManagement TodoList TaskManagement.SendNotification
+  app codegen on TaskManagement TodoAdded SendNotification
+  app codegen on TaskManagement TaskManagement.TodoAdded TaskManagement.SendNotification
+  app codegen on TaskManagement TodoAdded SendNotification --async
 `);
 }

@@ -7,6 +7,7 @@ import { generateInformation } from './information.js';
 import { generateEvent } from './event.js';
 import { generateProjectionCase } from './prjcase.js';
 import { generateJob } from './job.js';
+import { generateOn } from './on.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -191,6 +192,41 @@ export function handleCodegen(args: string[]) {
     }
 
     generateJob(contextName, informationName, automationName);
+  } else if (subCommand === 'on') {
+    if (subCommandArgs.length < 3) {
+      console.error('Error: Context, event, and automation name are required');
+      console.error('Usage: app codegen on [Context] [Event] [Automation]');
+      console.error('Example: app codegen on TaskManagement TodoAdded SendNotification');
+      printCodegenHelp();
+      process.exit(1);
+    }
+
+    const contextName = subCommandArgs[0];
+    const eventName = subCommandArgs[1];
+    const automationName = subCommandArgs[2];
+
+    // Check for optional flags
+    const asyncFlag = subCommandArgs.includes('--async');
+
+    // Validate context name is in PascalCase
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(contextName)) {
+      console.error(`Error: Context name must be in PascalCase (e.g., TaskManagement): ${contextName}`);
+      process.exit(1);
+    }
+
+    // Validate event name is in PascalCase or already fully qualified
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(eventName) && !/^[A-Z][a-zA-Z0-9]+\.[A-Z][a-zA-Z0-9]*$/.test(eventName)) {
+      console.error(`Error: Event name must be in PascalCase (e.g., TodoAdded) or fully qualified (e.g., TaskManagement.TodoAdded): ${eventName}`);
+      process.exit(1);
+    }
+
+    // Validate automation name is in PascalCase or already fully qualified
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(automationName) && !/^[A-Z][a-zA-Z0-9]+\.[A-Z][a-zA-Z0-9]*$/.test(automationName)) {
+      console.error(`Error: Automation name must be in PascalCase (e.g., SendNotification) or fully qualified (e.g., TaskManagement.SendNotification): ${automationName}`);
+      process.exit(1);
+    }
+
+    generateOn(contextName, eventName, automationName, asyncFlag);
   } else {
     console.error(`Unknown codegen command: ${subCommand}`);
     printCodegenHelp();
