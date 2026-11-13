@@ -1,8 +1,9 @@
 import {ServiceRegistry} from "@lib/types/service-registry";
 import {State} from "./state";
 import {Event} from "@lib/types/message";
+import {__Event__} from "../../../commands/__command__/events/__event__";
 
-export default async function prepare(event: Event, services: ServiceRegistry): Promise<State> {
+export default async function prepare(event: Event<__Event__>, services: ServiceRegistry): Promise<State> {
   /**
    * Prepare state for on()
    *

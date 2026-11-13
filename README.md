@@ -314,7 +314,10 @@ Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues
 
 ## Todo
 
+- [ ] Codegen remove commands
 - [ ] Test Scenario Runner
 - [ ] Frontend Guidance
-- [ ] Public context method to consume events
+- [ ] External Events
+- [ ] Public context method to consume external events
+- [ ] [spec-stream](https://github.com/proophboard/spec-stream) config
 
