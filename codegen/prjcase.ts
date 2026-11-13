@@ -3,6 +3,12 @@ import { existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, readd
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { getDomainPath } from '../bin/scanner';
+import {
+  parseEventsRegistry,
+  generateEventsRegistry,
+  addProjectionCase,
+  hasProjectionCase
+} from '../lib/helpers/event-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -194,123 +200,29 @@ export function generateProjectionCase(contextName: string, informationName: str
   }
   
   let eventsContent = readFileSync(eventsFilePath, 'utf-8');
+  const registry = parseEventsRegistry(eventsContent);
   
-  // Find the event entry and update its apply array
-  const eventEntryPattern = new RegExp(`"(${eventFqcn})":\\s*\\{([^}]+)\\}`, 's');
-  const match = eventsContent.match(eventEntryPattern);
-  
-  let updatedEventsContent = eventsContent;
-  
-  if (match) {
-    // Event is already registered, update the apply array
-    const existingEntryContent = match[2];
-    
-    // Check if this information is already in the apply array
-    if (existingEntryContent.includes(`information: "${informationFqcn}"`)) {
-      console.error(`Error: Projection case for "${eventFqcn}" with information "${informationFqcn}" is already registered.`);
-      process.exit(1);
-    }
-    
-    // Extract the current apply array content
-    const applyMatch = existingEntryContent.match(/apply:\s*\[\s*([\s\S]*?)\s*\]/);
-    const automateMatch = existingEntryContent.match(/automate:\s*\[\s*([\s\S]*?)\s*\]/);
-    
-    const currentApplyContent = applyMatch ? applyMatch[1].trim() : '';
-    const currentAutomateContent = automateMatch ? automateMatch[1].trim() : '';
-    
-    // Build the new apply array with the existing entries plus the new one
-    const newEntry = `
-      {
-        information: "${informationFqcn}",
-        inline: ${!asyncFlag},
-        addsTodoJob: ${addsTodoFlag},
-        prepare: prepare${informationShortName}${eventShortName},
-        exec: apply${informationShortName}${eventShortName}
-      }`;
-    
-    let newApplyContent = '';
-    if (currentApplyContent.length > 0) {
-      // Check if there are other entries (comma before ])
-      const beforeBracket = currentApplyContent.trim();
-      let separator = ',';
-      newApplyContent = beforeBracket + separator + '\n' + newEntry;
-    } else {
-      newApplyContent = newEntry;
-    }
-    
-    // Build the new entry content with both apply and automate
-    const newEntryContent = `\n    apply: [\n${newApplyContent}\n    ],\n    automate: []\n  `;
-    
-    // Replace the entire event entry
-    const oldEntry = `"${eventFqcn}": {` + match[2] + `}`;
-    const newEntryFull = `"${eventFqcn}": {` + newEntryContent + `}`;
-    
-    updatedEventsContent = updatedEventsContent.replace(oldEntry, newEntryFull);
-  } else {
-    // Event not registered yet, add it
-    const newEventEntry = `  "${eventFqcn}": {\n    apply: [\n      {\n        information: "${informationFqcn}",\n        inline: ${!asyncFlag},\n        addsTodoJob: ${addsTodoFlag},\n        prepare: prepare${informationShortName}${eventShortName},\n        exec: apply${informationShortName}${eventShortName}\n      }\n    ],\n    automate: []\n  },`;
-    
-    // Insert before the closing brace
-    const closingBraceMatch = updatedEventsContent.match(/\};$/m);
-    if (closingBraceMatch) {
-      const insertPos = closingBraceMatch.index || 0;
-      updatedEventsContent = updatedEventsContent.slice(0, insertPos) + newEventEntry + '\n' + updatedEventsContent.slice(insertPos);
-    }
+  // Check if this information is already in the apply array
+  if (hasProjectionCase(registry, eventFqcn, informationFqcn)) {
+    console.error(`Error: Projection case for "${eventFqcn}" with information "${informationFqcn}" is already registered.`);
+    process.exit(1);
   }
   
-  // Add imports for the new projection case functions
-  const importPreparePattern = `import prepare${informationShortName}${eventShortName}`;
-  const importApplyPattern = `import apply${informationShortName}${eventShortName}`;
+  // Add the projection case using the helper function
+  const updatedRegistry = addProjectionCase(
+    registry,
+    eventFqcn,
+    informationFqcn,
+    !asyncFlag,
+    addsTodoFlag,
+    `prepare${informationShortName}${eventShortName}`,
+    `apply${informationShortName}${eventShortName}`
+  );
   
-  // Check if imports already exist (by checking for the import statement pattern)
-  const hasPrepareImport = updatedEventsContent.includes(importPreparePattern) && updatedEventsContent.includes('from "./information/');
-  const hasApplyImport = updatedEventsContent.includes(importApplyPattern) && updatedEventsContent.includes('from "./information/');
+  // Regenerate the events.ts content
+  eventsContent = generateEventsRegistry(updatedRegistry);
   
-  if (!hasPrepareImport || !hasApplyImport) {
-    // Define the import statements
-    const importPrepare = `import prepare${informationShortName}${eventShortName} from "./information/${informationKebabCase}/projection/${eventKebabCase}/prepare";`;
-    const importApply = `import apply${informationShortName}${eventShortName} from "./information/${informationKebabCase}/projection/${eventKebabCase}/apply";`;
-    
-    // Find the last import statement and insert after it
-    const importLines = updatedEventsContent.split('\n').filter(line => line.trim().startsWith('import'));
-    if (importLines.length > 0) {
-      const lastImportLine = importLines[importLines.length - 1];
-      const insertPos = updatedEventsContent.indexOf(lastImportLine) + lastImportLine.length;
-      const afterNewline = updatedEventsContent.indexOf('\n', insertPos) + 1;
-      // Insert new imports without blank line between imports
-      updatedEventsContent = updatedEventsContent.slice(0, afterNewline) + importPrepare + '\n' + importApply + updatedEventsContent.slice(afterNewline);
-    } else {
-      // No imports, add after the first line
-      const firstNewline = updatedEventsContent.indexOf('\n');
-      updatedEventsContent = updatedEventsContent.slice(0, firstNewline + 1) + importPrepare + '\n' + importApply + updatedEventsContent.slice(firstNewline + 1);
-    }
-    
-    // Ensure there's exactly one blank line between the last import and the export statement
-    const lines = updatedEventsContent.split('\n');
-    let lastImportLineText = '';
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (lines[i].trim().startsWith('import')) {
-        lastImportLineText = lines[i];
-        break;
-      }
-    }
-    const lastImportIdx = updatedEventsContent.indexOf(lastImportLineText);
-    if (lastImportIdx >= 0) {
-      const afterImport = updatedEventsContent.indexOf('\n', lastImportIdx + lastImportLineText.length);
-      if (afterImport >= 0) {
-        const remaining = updatedEventsContent.slice(afterImport + 1);
-        // Check if next line starts with 'export'
-        const nextNonEmptyLine = remaining.split('\n').find(line => line.trim().length > 0) || '';
-        if (nextNonEmptyLine.trim().startsWith('export')) {
-          // Replace any number of newlines with exactly one blank line before export
-          const trimmedRemaining = remaining.replace(/^\n+/, '');
-          updatedEventsContent = updatedEventsContent.slice(0, afterImport + 1) + '\n' + trimmedRemaining;
-        }
-      }
-    }
-  }
-  
-  writeFileSync(eventsFilePath, updatedEventsContent, 'utf-8');
+  writeFileSync(eventsFilePath, eventsContent, 'utf-8');
   console.log(`✓ Added projection case "${eventFqcn}" to events.ts`);
   
   console.log(`\n✓ Projection case "${eventFqcn}" generated successfully!`);

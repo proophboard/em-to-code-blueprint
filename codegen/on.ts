@@ -2,6 +2,12 @@ import {existsSync, mkdirSync, copyFileSync, readFileSync, writeFileSync, statSy
 import {join, dirname} from 'path';
 import {fileURLToPath} from 'url';
 import {getDomainPath} from '../bin/scanner';
+import {
+  parseEventsRegistry,
+  generateEventsRegistry,
+  addEventAutomation,
+  hasEventAutomation
+} from '../lib/helpers/event-registry.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -98,8 +104,32 @@ export function generateOn(contextName: string, eventName: string, automationNam
   }
 
   const eventsContent = readFileSync(eventsFilePath, 'utf-8');
-  if (!eventsContent.includes(`"${eventFqcn}"`)) {
-    console.error(`Error: Event "${eventFqcn}" is not registered in context "${contextName}".`);
+  const registry = parseEventsRegistry(eventsContent);
+
+  // Check if this automation is already in the automate array
+  if (hasEventAutomation(registry, eventFqcn, automationFqcn)) {
+    console.error(`Error: Event automation "${automationFqcn}" for event "${eventFqcn}" is already registered.`);
+    process.exit(1);
+  }
+
+  // Add the automation using the helper function
+  const updatedRegistry = addEventAutomation(
+    registry,
+    eventFqcn,
+    automationFqcn,
+    !asyncFlag,
+    `prepare${automationShortName}`,
+    `on${automationShortName}`
+  );
+
+  // Regenerate the events.ts content
+  const updatedEventsContent = generateEventsRegistry(updatedRegistry);
+
+  // Find the command that the event belongs to
+  const commandKebabCase = findCommandForEvent(contextDir, eventShortName);
+
+  if (!commandKebabCase) {
+    console.error(`Error: Event "${eventFqcn}" is not registered in any command.`);
     console.error(`  Hint: Use "app codegen event ${contextName} [Command] ${eventShortName}" to register the event first.`);
     process.exit(1);
   }
@@ -146,15 +176,6 @@ export function generateOn(contextName: string, eventName: string, automationNam
     }
   }
 
-  // Find the command that the event belongs to
-  const commandKebabCase = findCommandForEvent(contextDir, eventShortName);
-
-  if (!commandKebabCase) {
-    console.error(`Error: Event "${eventFqcn}" is not registered in any command.`);
-    console.error(`  Hint: Use "app codegen event ${contextName} [Command] ${eventShortName}" to register the event first.`);
-    process.exit(1);
-  }
-
   // Replace placeholders in on.ts and prepare.ts
   // Import path: from "../../../../commands/__command__/events/__event__"
   // Should become: from "../../../../commands/[commandKebabCase]/events/[eventKebabCase]"
@@ -186,145 +207,7 @@ export function generateOn(contextName: string, eventName: string, automationNam
     console.log(`  ✓ Updated: prepare.ts`);
   }
 
-  // Add event automation to events.ts registry
-  let updatedEventsContent = eventsContent;
-
-  // Find the event entry and update its automate array
-  // Find the position of the event FQCN in the content
-  const eventFqcnEscaped = eventFqcn.replace(/[$()*+.?[\\\]^{|}]/g, '\\$&');
-  const eventIndex = updatedEventsContent.indexOf(`"${eventFqcn}"`);
-  
-  if (eventIndex >= 0) {
-    // Event is already registered, find its entry and update the automate array
-    // Find the opening brace after the event FQCN
-    const openBraceIndex = updatedEventsContent.indexOf('{', eventIndex);
-    if (openBraceIndex < 0) {
-      console.error(`Error: Could not find opening brace for event "${eventFqcn}"`);
-      process.exit(1);
-    }
-    
-    // Find the closing brace - we need to find the matching closing brace for the event entry
-    // Count braces to find the correct closing position
-    let braceCount = 0;
-    let closeBraceIndex = -1;
-    for (let i = openBraceIndex; i < updatedEventsContent.length; i++) {
-      if (updatedEventsContent[i] === '{') {
-        braceCount++;
-      } else if (updatedEventsContent[i] === '}') {
-        braceCount--;
-        if (braceCount === 0) {
-          closeBraceIndex = i;
-          break;
-        }
-      }
-    }
-    
-    if (closeBraceIndex < 0) {
-      console.error(`Error: Could not find closing brace for event "${eventFqcn}"`);
-      process.exit(1);
-    }
-    
-    // Extract the event content
-    const fullEventEntry = updatedEventsContent.slice(eventIndex, closeBraceIndex + 1);
-    const eventContent = updatedEventsContent.slice(openBraceIndex + 1, closeBraceIndex);
-    
-    // Check if this automation is already in the automate array
-    if (eventContent.includes(`automation: "${automationFqcn}"`)) {
-      console.error(`Error: Event automation "${automationFqcn}" for event "${eventFqcn}" is already registered.`);
-      process.exit(1);
-    }
-    
-    // Extract the current automate array content
-    const automateMatch = eventContent.match(/automate:\s*\[\s*([\s\S]*?)\s*\]/);
-    const currentAutomateContent = automateMatch ? automateMatch[1].trim() : '';
-    
-    // Build the new automate array with the existing entries plus the new one
-    const newEntry = `
-      {
-        automation: "${automationFqcn}",
-        inline: ${!asyncFlag},
-        prepare: prepare${automationShortName},
-        exec: on${automationShortName}
-      }`;
-    
-    let newAutomateContent = '';
-    if (currentAutomateContent.length > 0) {
-      // Check if there are other entries (comma before ])
-      const beforeBracket = currentAutomateContent.trim();
-      let separator = ',';
-      newAutomateContent = beforeBracket + separator + '\n' + newEntry;
-    } else {
-      newAutomateContent = newEntry;
-    }
-    
-    // Build the new automate array string
-    const newAutomateArray = `automate: [\n${newAutomateContent}\n    ]`;
-    
-    // Find and replace the automate array
-    const oldAutomatePattern = /automate:\s*\[\s*[\s\S]*?\s*\]/;
-    const newFullEventEntry = fullEventEntry.replace(oldAutomatePattern, newAutomateArray);
-    
-    updatedEventsContent = updatedEventsContent.replace(fullEventEntry, newFullEventEntry);
-  } else {
-    // Event not registered yet, add it
-    const newEventEntry = `  "${eventFqcn}": {\n    apply: [],\n    automate: [\n      {\n        automation: "${automationFqcn}",\n        inline: ${!asyncFlag},\n        prepare: prepare${automationShortName},\n        exec: on${automationShortName}\n      }\n    ]\n  },`;
-    
-    // Insert before the closing brace
-    const closingBraceMatch = updatedEventsContent.match(/\};$/m);
-    if (closingBraceMatch) {
-      const insertPos = closingBraceMatch.index || 0;
-      updatedEventsContent = updatedEventsContent.slice(0, insertPos) + newEventEntry + '\n' + updatedEventsContent.slice(insertPos);
-    }
-  }
-
-  // Add imports for the new event automation functions
-  const importPrepare = `import prepare${automationShortName} from "./automations/events/${automationKebabCase}/prepare";`;
-  const importExec = `import on${automationShortName} from "./automations/events/${automationKebabCase}/on";`;
-
-  // Check if imports already exist
-  const hasPrepareImport = updatedEventsContent.includes(`prepare${automationShortName}`) && updatedEventsContent.includes('from "./automations/events/');
-  const hasExecImport = updatedEventsContent.includes(`on${automationShortName}`) && updatedEventsContent.includes('from "./automations/events/');
-
-  if (!hasPrepareImport || !hasExecImport) {
-    // Find the last import statement and insert after it
-    const importLines = updatedEventsContent.split('\n').filter(line => line.trim().startsWith('import'));
-    if (importLines.length > 0) {
-      const lastImportLine = importLines[importLines.length - 1];
-      const insertPos = updatedEventsContent.indexOf(lastImportLine) + lastImportLine.length;
-      const afterNewline = updatedEventsContent.indexOf('\n', insertPos) + 1;
-      // Insert new imports without blank line between imports
-      updatedEventsContent = updatedEventsContent.slice(0, afterNewline) + importPrepare + '\n' + importExec + updatedEventsContent.slice(afterNewline);
-    } else {
-      // No imports, add after the first line
-      const firstNewline = updatedEventsContent.indexOf('\n');
-      updatedEventsContent = updatedEventsContent.slice(0, firstNewline + 1) + importPrepare + '\n' + importExec + updatedEventsContent.slice(firstNewline + 1);
-    }
-
-    // Ensure there's exactly one blank line between the last import and the export statement
-    const lines = updatedEventsContent.split('\n');
-    let lastImportLineText = '';
-    for (let i = lines.length - 1; i >= 0; i--) {
-      if (lines[i].trim().startsWith('import')) {
-        lastImportLineText = lines[i];
-        break;
-      }
-    }
-    const lastImportIdx = updatedEventsContent.indexOf(lastImportLineText);
-    if (lastImportIdx >= 0) {
-      const afterImport = updatedEventsContent.indexOf('\n', lastImportIdx + lastImportLineText.length);
-      if (afterImport >= 0) {
-        const remaining = updatedEventsContent.slice(afterImport + 1);
-        // Check if next line starts with 'export'
-        const nextNonEmptyLine = remaining.split('\n').find(line => line.trim().length > 0) || '';
-        if (nextNonEmptyLine.trim().startsWith('export')) {
-          // Replace any number of newlines with exactly one blank line before export
-          const trimmedRemaining = remaining.replace(/^\n+/, '');
-          updatedEventsContent = updatedEventsContent.slice(0, afterImport + 1) + '\n' + trimmedRemaining;
-        }
-      }
-    }
-  }
-
+  // Write the updated events.ts file
   writeFileSync(eventsFilePath, updatedEventsContent, 'utf-8');
   console.log(`✓ Added event automation "${automationFqcn}" to events.ts`);
 
