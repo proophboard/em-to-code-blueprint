@@ -328,13 +328,13 @@ npx app -h
 
 ### Why are all functions split into `prepare` and `execute`?
 
-[Functional Approach](fucntional-approach.md)
+[Functional Approach](docs/fucntional-approach.md)
 
 ### Why no entities?
 
 Entities do exist in the data model - the `information` part, when you give an object an identifier. However, entities are not used to perform data changes. All changes go through `command -> handle() -> events -> apply() -> state` flows.
 
-See [Functional Approach](fucntional-approach.md) for details.
+See [Functional Approach](docs/fucntional-approach.md) for details.
 
 ### Your question here?
 
