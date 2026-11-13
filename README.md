@@ -56,36 +56,47 @@ See [Functional Approach](fucntional-approach.md) for details.
 
 Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues).
 
-## CLI Tooling
+## CLI Tooling / Playground
 
-### List Commands and Queries
+The project includes a unified CLI tool `app` for managing commands and queries.
+
+### Installation
+
+```bash
+npm install
+```
+
+### Usage
+
+```bash
+npx app <command> [arguments]
+```
+
+### Commands
+
+#### `list`
 
 List all available commands and queries grouped by context:
 
 ```bash
-npm run list
+npx app list
 ```
 
 The command dynamically scans `example/src/domain/*/commands.ts` and `example/src/domain/*/queries.ts` to discover all registered commands and queries.
 
-### Execute Commands
+#### `handle <command-name> <json-payload>`
 
 Execute a command in a context:
 
 ```bash
-npm run handle <command-name> <json-payload>
+npx app handle TaskManagement.AddTodo '{"title":"Test Todo","owner":"Alex"}'
 ```
 
-The command searches for the command name in available contexts, loads the context module, creates a command message object from CLI args, and invokes `module.handle(command)`.
+The command searches for the command name in available contexts, validates the payload against TypeScript type definitions, loads the context module, and invokes `module.handle(command)`.
 
 **Arguments:**
 - `command-name` - The fully qualified command name (e.g., `TaskManagement.AddTodo`)
 - `json-payload` - JSON object with command payload
-
-**Example:**
-```bash
-npm run handle TaskManagement.AddTodo '{"title":"Test Todo","description":"Test description"}'
-```
 
 The command displays:
 - The command message being executed
@@ -94,24 +105,19 @@ The command displays:
 
 If the command is not found, it shows available commands per context.
 
-### Execute Queries
+#### `resolve <query-name> <json-payload>`
 
 Execute a query in a context:
 
 ```bash
-npm run resolve <query-name> <json-payload>
+npx app resolve TaskManagement.TodoList '{"status": "open"}'
 ```
 
-The command searches for the query name in available contexts, loads the context module, creates a query message object from CLI args, and invokes `module.resolve(query)`.
+The command searches for the query name in available contexts, validates the payload against TypeScript type definitions, loads the context module, and invokes `module.resolve(query)`.
 
 **Arguments:**
 - `query-name` - The fully qualified query name (e.g., `TaskManagement.TodoList`)
 - `json-payload` - JSON object with query payload
-
-**Example:**
-```bash
-npm run resolve TaskManagement.TodoList '{"status": "open"}'
-```
 
 The command displays:
 - The query message being executed
@@ -119,6 +125,25 @@ The command displays:
 - Success/failure status
 
 If the query is not found, it shows available queries per context.
+
+### Help
+
+Get help for the CLI:
+
+```bash
+npx app --help
+npx app -h
+```
+
+### NPM Scripts (Legacy)
+
+The original npm scripts are still available for backward compatibility:
+
+```bash
+npm run list
+npm run handle <command-name> <json-payload>
+npm run resolve <query-name> <json-payload>
+```
 
 ## Todo
 
