@@ -58,7 +58,15 @@ Open a [GitHub Issue](https://github.com/proophboard/em-to-code-blueprint/issues
 
 ## CLI Tooling
 
+### List Commands and Queries
 
+List all available commands and queries grouped by context:
+
+```bash
+npm run list
+```
+
+The command dynamically scans `example/src/domain/*/commands.ts` and `example/src/domain/*/queries.ts` to discover all registered commands and queries.
 
 ## Todo
 
