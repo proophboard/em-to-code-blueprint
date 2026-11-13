@@ -207,4 +207,5 @@ const resolve = async (query: Query): Promise<object | object[]> => {
 export default {
   handle,
   apply: applyAll,
+  resolve,
 }

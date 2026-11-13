@@ -93,7 +93,8 @@ export class InMemoryEventStore implements EventStore {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      this.streams = require(this.storageFile).streams;
+      const data = this.fs.readFileSync(this.storageFile, 'utf-8');
+      this.streams = JSON.parse(data).streams;
     }
   }
 

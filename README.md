@@ -68,6 +68,58 @@ npm run list
 
 The command dynamically scans `example/src/domain/*/commands.ts` and `example/src/domain/*/queries.ts` to discover all registered commands and queries.
 
+### Execute Commands
+
+Execute a command in a context:
+
+```bash
+npm run handle <command-name> <json-payload>
+```
+
+The command searches for the command name in available contexts, loads the context module, creates a command message object from CLI args, and invokes `module.handle(command)`.
+
+**Arguments:**
+- `command-name` - The fully qualified command name (e.g., `TaskManagement.AddTodo`)
+- `json-payload` - JSON object with command payload
+
+**Example:**
+```bash
+npm run handle TaskManagement.AddTodo '{"title":"Test Todo","description":"Test description"}'
+```
+
+The command displays:
+- The command message being executed
+- Command preparation and execution logs
+- Success/failure status
+
+If the command is not found, it shows available commands per context.
+
+### Execute Queries
+
+Execute a query in a context:
+
+```bash
+npm run resolve <query-name> <json-payload>
+```
+
+The command searches for the query name in available contexts, loads the context module, creates a query message object from CLI args, and invokes `module.resolve(query)`.
+
+**Arguments:**
+- `query-name` - The fully qualified query name (e.g., `TaskManagement.TodoList`)
+- `json-payload` - JSON object with query payload
+
+**Example:**
+```bash
+npm run resolve TaskManagement.TodoList '{"status": "open"}'
+```
+
+The command displays:
+- The query message being executed
+- Query execution logs
+- Success/failure status
+
+If the query is not found, it shows available queries per context.
+
 ## Todo
 
 - [ ] Test Scenario Runner

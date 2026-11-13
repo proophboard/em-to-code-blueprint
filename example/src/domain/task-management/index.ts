@@ -1,5 +1,6 @@
 import {Command, Event, Query} from "@lib/types/message";
 import {commands} from "./commands";
+import {queries} from "./queries";
 import {events, events as eventRegistry} from "./events";
 import {
   SERVICE_KEY_INFORMATION_FLOW_LOGGER,
@@ -101,6 +102,16 @@ const handle = async (cmd: Command) => {
 
 services.set(SERVICE_KEY_JOB_QUEUE, new InMemoryJobQueue(handle, jobs, services, services.get<InformationFlowLogger>(SERVICE_KEY_INFORMATION_FLOW_LOGGER)));
 
+const resolve = async (query: Query) => {
+  const handler = queries[query.name];
+
+  if (!handler) {
+    throw new Error(`Query ${query.name} unknown`);
+  }
+
+  return handler.resolve(query, services);
+};
+
 const applyAll = async (event: Event): Promise<SessionTask[]> => {
   if(!events[event.name]) {
     throw new Error(`Event ${event.name} is unknown`);
@@ -131,5 +142,6 @@ const applyEventToInformation = async (event: Event, apply: InformationApplyMapp
 
 export default {
   handle,
+  resolve,
   apply: applyAll,
 }

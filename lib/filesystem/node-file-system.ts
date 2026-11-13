@@ -15,4 +15,8 @@ export class NodeFilesystem implements Filesystem {
   writeFileSync(filename: string, content: string): void {
     this.nodeFs.writeFileSync(filename, content);
   }
+
+  readFileSync(filename: string, encoding: BufferEncoding): string {
+    return this.nodeFs.readFileSync(filename, encoding);
+  }
 }

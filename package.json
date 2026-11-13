@@ -25,10 +25,14 @@
     "node": ">=18"
   },
   "bin": {
-    "list-commands": "./bin/list.ts"
+    "list-contexts": "./bin/list.ts",
+    "handle-command": "./bin/handle.ts",
+    "resolve-query": "./bin/resolve.ts"
   },
   "scripts": {
     "list": "tsx bin/list.ts",
+    "handle": "tsx bin/handle.ts",
+    "resolve": "tsx bin/resolve.ts",
     "ts:check": "npx tsc --noEmit"
   },
   "devDependencies": {

@@ -12,4 +12,8 @@ export class NoOpFilesystem implements Filesystem {
   writeFileSync(filename: string, content: string): void {
     throw new Error('Write to filesystem not supported');
   }
+
+  readFileSync(filename: string, encoding: BufferEncoding): string {
+    throw new Error('Read from filesystem not supported');
+  }
 }

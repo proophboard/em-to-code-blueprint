@@ -48,7 +48,8 @@ export class InMemoryDocumentStore implements DocumentStore {
       }
 
       // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const stored = require(this.storageFile);
+      const data = this.fs.readFileSync(this.storageFile, 'utf-8');
+      const stored = JSON.parse(data);
       this.documents = this.migrateDocs(stored.documents);
       this.sequences = stored.sequences || {};
     }
