@@ -103,13 +103,19 @@ const handle = async (cmd: Command) => {
 services.set(SERVICE_KEY_JOB_QUEUE, new InMemoryJobQueue(handle, jobs, services, services.get<InformationFlowLogger>(SERVICE_KEY_INFORMATION_FLOW_LOGGER)));
 
 const resolve = async (query: Query) => {
+  const logger = services.get<InformationFlowLogger>(SERVICE_KEY_INFORMATION_FLOW_LOGGER);
+
   const handler = queries[query.name];
 
   if (!handler) {
     throw new Error(`Query ${query.name} unknown`);
   }
 
-  return handler.resolve(query, services);
+  logger.logInformation(`Resolving query ${query.name}`);
+
+  const result = await handler.resolve(query, services);
+
+  logger.logInformation(`Query ${query.name} resolved: `, result);
 };
 
 const applyAll = async (event: Event): Promise<SessionTask[]> => {
