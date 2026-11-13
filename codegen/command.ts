@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import { getDomainPath } from '../bin/scanner';
 import { generateInformation } from './information.js';
 import { generateEvent } from './event.js';
+import { generateProjectionCase } from './prjcase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -121,6 +122,38 @@ export function handleCodegen(args: string[]) {
     }
 
     generateEvent(contextName, commandName, eventName);
+  } else if (subCommand === 'prjcase') {
+    if (subCommandArgs.length < 3) {
+      console.error('Error: Context, information, and event name are required');
+      console.error('Usage: app codegen prjcase [Context] [Information] [Event]');
+      console.error('Example: app codegen prjcase TaskManagement TodoList TodoAdded');
+      printCodegenHelp();
+      process.exit(1);
+    }
+
+    const contextName = subCommandArgs[0];
+    const informationName = subCommandArgs[1];
+    const eventName = subCommandArgs[2];
+
+    // Validate context name is in PascalCase
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(contextName)) {
+      console.error(`Error: Context name must be in PascalCase (e.g., TaskManagement): ${contextName}`);
+      process.exit(1);
+    }
+
+    // Validate information name is in PascalCase or already fully qualified
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(informationName) && !/^[A-Z][a-zA-Z0-9]+\.[A-Z][a-zA-Z0-9]*$/.test(informationName)) {
+      console.error(`Error: Information name must be in PascalCase (e.g., TodoList) or fully qualified (e.g., TaskManagement.TodoList): ${informationName}`);
+      process.exit(1);
+    }
+
+    // Validate event name is in PascalCase or already fully qualified
+    if (!/^[A-Z][a-zA-Z0-9]*$/.test(eventName) && !/^[A-Z][a-zA-Z0-9]+\.[A-Z][a-zA-Z0-9]*$/.test(eventName)) {
+      console.error(`Error: Event name must be in PascalCase (e.g., TodoAdded) or fully qualified (e.g., TaskManagement.TodoAdded): ${eventName}`);
+      process.exit(1);
+    }
+
+    generateProjectionCase(contextName, informationName, eventName);
   } else {
     console.error(`Unknown codegen command: ${subCommand}`);
     printCodegenHelp();

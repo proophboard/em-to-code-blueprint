@@ -6,6 +6,7 @@ Commands:
   command <context> <name>         Generate a new command
   information <context> <name>     Generate a new information
   event <context> <command> <name> Generate a new event
+  prjcase <context> <info> <event> Generate a new projection case
 
 Options:
   --no-query      Omit query.ts and resolve.ts files
@@ -20,5 +21,7 @@ Examples:
   app codegen event TaskManagement AddTodo TodoAdded
   app codegen event TaskManagement TaskManagement.AddTodo TodoAdded
   app codegen event TaskManagement TaskManagement.AddTodo TaskManagement.TodoAdded
+  app codegen prjcase TaskManagement TodoList TodoAdded
+  app codegen prjcase TaskManagement TodoList TaskManagement.TodoAdded
 `);
 }
