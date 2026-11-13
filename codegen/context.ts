@@ -44,6 +44,17 @@ export function generateContext(contextName: string, eventSourced: boolean) {
       // Create empty folder for subdirectories
       mkdirSync(targetItemPath, { recursive: true });
       console.log(`  ✓ Created folder: ${item}`);
+      
+      // Create subfolders for automations
+      if (item === 'automations') {
+        const automationsPath = join(targetDir, 'automations');
+        const eventsPath = join(automationsPath, 'events');
+        const jobsPath = join(automationsPath, 'jobs');
+        mkdirSync(eventsPath, { recursive: true });
+        mkdirSync(jobsPath, { recursive: true });
+        console.log(`  ✓ Created folder: automations/events`);
+        console.log(`  ✓ Created folder: automations/jobs`);
+      }
     } else if (item.endsWith('.ts') || item.endsWith('.js')) {
       // Skip index.* files for now, will handle based on --event-sourced flag
       if (item.startsWith('index.')) {
