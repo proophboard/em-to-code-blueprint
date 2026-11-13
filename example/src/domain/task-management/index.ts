@@ -151,5 +151,4 @@ const applyEventToInformation = async (event: Event, apply: InformationApplyMapp
 export default {
   handle,
   resolve,
-  apply: applyAll,
 }
