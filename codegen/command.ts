@@ -285,7 +285,7 @@ export function generateCommand(contextName: string, commandName: string) {
     // Determine the import name (PascalCase, e.g., prepareAddTodo, handleAddTodo)
     const importName = commandShortName;
     
-    // Generate import statement
+    // Generate import statements
     const importLine = `import prepare${importName} from "./commands/${kebabCaseName}/prepare";`;
     const handleImportLine = `import handle${importName} from "./commands/${kebabCaseName}/handle";`;
     
@@ -297,22 +297,24 @@ export function generateCommand(contextName: string, commandName: string) {
         const lastImportLine = importLines[importLines.length - 1];
         const insertPos = commandsContent.indexOf(lastImportLine) + lastImportLine.length;
         const afterNewline = commandsContent.indexOf('\n', insertPos) + 1;
-        commandsContent = commandsContent.slice(0, afterNewline) + '\n' + importLine + '\n' + handleImportLine + commandsContent.slice(afterNewline);
+        // Add blank line before new imports for readability (template already has blank lines, don't double up)
+        commandsContent = commandsContent.slice(0, afterNewline) + '\n' + importLine + '\n' + handleImportLine + '\n' + commandsContent.slice(afterNewline);
       } else {
         // No imports, add after the first line (import {CommandRegistry}...)
         const firstNewline = commandsContent.indexOf('\n');
-        commandsContent = commandsContent.slice(0, firstNewline + 1) + importLine + '\n' + handleImportLine + commandsContent.slice(firstNewline + 1);
+        // Ensure blank line between import block and export
+        commandsContent = commandsContent.slice(0, firstNewline + 1) + '\n' + importLine + '\n' + handleImportLine + '\n' + commandsContent.slice(firstNewline + 1);
       }
     }
     
-    // Add command registration
+    // Add command registration with proper formatting (2 spaces indentation matching the template)
     const commandEntry = `  "${fqcn}": {\n    prepare: prepare${importName},\n    exec: handle${importName}\n  },`;
     
     // Insert before the closing brace
     const closingBraceMatch = commandsContent.match(/\};$/m);
     if (closingBraceMatch) {
       const insertPos = closingBraceMatch.index || 0;
-      commandsContent = commandsContent.slice(0, insertPos) + '  ' + commandEntry + '\n' + commandsContent.slice(insertPos);
+      commandsContent = commandsContent.slice(0, insertPos) + commandEntry + '\n' + commandsContent.slice(insertPos);
     }
     
     writeFileSync(commandsFilePath, commandsContent, 'utf-8');
