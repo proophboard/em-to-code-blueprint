@@ -1,7 +1,7 @@
-import {Index} from "@lib/DocumentStore/Index";
-import {FieldIndex} from "@lib/DocumentStore/Index/FieldIndex";
-import {MultiFieldIndex} from "@lib/DocumentStore/Index/MultiFieldIndex";
-import {MetadataFieldIndex} from "@lib/DocumentStore/Index/MetadataFieldIndex";
+import {Index} from "@lib/document-store/Index";
+import {FieldIndex} from "@lib/document-store/index/FieldIndex";
+import {MultiFieldIndex} from "@lib/document-store/index/MultiFieldIndex";
+import {MetadataFieldIndex} from "@lib/document-store/index/MetadataFieldIndex";
 
 export interface IndexProcessor {
   process: (index: Index, tableName: string) => any;

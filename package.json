@@ -28,7 +28,8 @@
     "list-commands": "./bin/list.ts"
   },
   "scripts": {
-    "list": "tsx bin/list.ts"
+    "list": "tsx bin/list.ts",
+    "ts:check": "npx tsc --noEmit"
   },
   "devDependencies": {
     "@types/node": "^20.14.0",

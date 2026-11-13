@@ -2,7 +2,7 @@ import {FilterProcessor} from "@lib/document-store/filter-processor";
 import {AnyFilter} from "@lib/document-store/filter/AnyFilter";
 import {EqFilter} from "@lib/document-store/filter/EqFilter";
 import {AndFilter} from "@lib/document-store/filter/AndFilter";
-import {Filter} from "@lib/document-store/Filter";
+import {Filter} from "@lib/document-store/filter";
 import {OrFilter} from "@lib/document-store/filter/OrFilter";
 import {DocIdFilter} from "@lib/document-store/filter/DocIdFilter";
 import {ExistsFilter} from "@lib/document-store/filter/ExistsFilter";

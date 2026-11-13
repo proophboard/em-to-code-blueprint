@@ -1,7 +1,6 @@
-import {Index} from "@lib/DocumentStore/Index";
-import {IndexProcessor} from "@lib/DocumentStore/IndexProcessor";
-import {Sort} from "@lib/DocumentStore";
-import {FieldIndex} from "@lib/DocumentStore/Index/FieldIndex";
+import {Index} from "@lib/document-store/Index";
+import {IndexProcessor} from "@lib/document-store/index-processor";
+import {Sort} from "@lib/document-store/document-store";
 
 type MultiFieldIndexFields = Array<{ field: string, sort?: Sort }>;
 

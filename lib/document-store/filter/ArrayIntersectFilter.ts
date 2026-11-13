@@ -1,4 +1,4 @@
-import { Filter } from '../Filter';
+import { Filter } from '../filter';
 import { FilterProcessor } from '@lib/document-store/filter-processor';
 
 export class ArrayIntersectFilter implements Filter {

@@ -1,4 +1,4 @@
-import {Filter} from "@lib/document-store/Filter";
+import {Filter} from "../filter";
 import {FilterProcessor} from "@lib/document-store/filter-processor";
 
 export class DocIdFilter implements Filter {
