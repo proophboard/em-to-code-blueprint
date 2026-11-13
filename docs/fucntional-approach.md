@@ -12,5 +12,5 @@ While not strictly enforced, the blueprint encourages the use of immutable data 
 
 `Information` (data) is only changed by applying `events`. This does not necessarily mean that you have to use Event Sourcing. 
 The pattern demonstrated here is very similar to Event Sourcing (and it can easily be activated), but it is not enforced.
-If you're familiar with `Redux` for centraled state management in `React`, you'll notice similarities.
+If you're familiar with `Redux` for centralized state management in `React`, you'll notice similarities.
 
