@@ -149,3 +149,4 @@ npm run resolve <query-name> <json-payload>
 
 - [ ] Test Scenario Runner
 - [ ] Frontend Guidance
+- [ ] Public context method to consume events
