@@ -1,6 +1,7 @@
 import {describe, it, expect, beforeEach, vi, afterEach} from 'vitest';
-import {readFileSync, mkdirSync, writeFileSync, rmSync, existsSync} from 'fs';
+import {readFileSync, mkdirSync, writeFileSync, rmSync, existsSync, mkdtempSync} from 'fs';
 import {join, resolve, dirname} from 'path';
+import {tmpdir} from 'os';
 import {fileURLToPath} from 'url';
 import {randomUUID} from 'crypto';
 import {
@@ -183,8 +184,7 @@ describe('Registry Reader', () => {
   let tempDir: string;
 
   beforeEach(() => {
-    tempDir = join(__dirname, '__test_temp__', randomUUID());
-    mkdirSync(tempDir, {recursive: true});
+    tempDir = mkdtempSync(join(tmpdir(), 'registry-reader-test-'));
   });
 
   afterEach(() => {
@@ -402,21 +402,14 @@ describe('Registry Reader', () => {
         expect(snapshot.jobs.size).toBe(0);
       });
 
-      // TODO: This test is skipped due to a race condition in temp directory cleanup
-      // when running tests in parallel. The file write happens but readRegistrySnapshot
-      // sometimes reads from an older temp directory. This needs investigation.
-      it.skip('should parse single job with todoList', () => {
+      it('should parse single job with todoList', () => {
         const contextPath = join(tempDir, 'task-management');
         mkdirSync(contextPath, {recursive: true});
         const filePath = join(contextPath, 'job-automations.ts');
         writeFileSync(filePath, fixtures.singleJob, 'utf-8');
-        
-        // Verify file was written correctly
-        const writtenContent = readFileSync(filePath, 'utf-8');
-        expect(writtenContent).toContain('export const jobs');
-        
+
         const snapshot = readRegistrySnapshot(tempDir);
-        expect(snapshot.jobs).toHaveProperty('TaskManagement.SendDailyReminder');
+        expect(snapshot.jobs.has('TaskManagement.SendDailyReminder')).toBe(true);
         expect(snapshot.jobs.get('TaskManagement.SendDailyReminder')?.todoList).toBe('TaskManagement.TodoList');
       });
 

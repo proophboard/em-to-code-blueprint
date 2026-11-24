@@ -79,7 +79,9 @@ export function createProophClient(
     type: n.type,
     name: n.name,
     context: n.context || 'App',
-    chapterId: n.chapterId
+    chapterId: n.chapterId,
+    sliceId: n.sliceId,
+    chapterName: n.chapterName
   });
 
   return {
@@ -111,7 +113,7 @@ export function createProophClient(
           sliceStatus: slice.status
         }));
 
-      return { slice: { id: slice.id, chapterId }, elements, chapterName: data.name };
+      return { slice: { id: slice.id, chapterId, label: slice.label }, elements, chapterName: data.name };
     },
 
     async getDependencyGraph(chapterId, elementId) {

@@ -1,7 +1,7 @@
 // Task comment templates for the bridge module
 // Generates comments for implementation agents based on action types
 
-import type { Action, BoardElement } from './model.js';
+import type { Action } from './model.js';
 
 /**
  * The product owner's wording for known elements (typo fixed: "necessary" not "neccessary")
@@ -20,49 +20,65 @@ Board reference: chapter {chapterName} ({chapterId}), slice {sliceLabel} ({slice
 When done, resolve this task.`;
 
 /**
+ * Everything a comment needs to render itself: chapter/slice/element
+ * coordinates of the element the comment is posted on. For counterpart
+ * elements in other chapters these are the counterpart's own ids.
+ */
+export interface CommentContext {
+  chapterId: string;
+  chapterName: string;
+  sliceLabel: string;
+  sliceId: string;
+  elementId: string;
+}
+
+/**
+ * Input accepted by buildComment: the element reference (real BoardElement
+ * or a graph counterpart synthesised from ids) plus board context.
+ */
+export interface BuildCommentInput {
+  element: { id: string; sliceId: string };
+  chapterId: string;
+  chapterName: string;
+  sliceLabel: string;
+}
+
+/**
  * Builds a task comment for an action
  * @param action - The action to generate a comment for
- * @param ctx - Context information (element, chapter, slice)
+ * @param input - Context information (element ref, chapter, slice)
  * @returns The complete comment text
  */
-export function buildComment(action: Action, ctx: { element: BoardElement; chapterName: string; sliceLabel: string }): string {
-  const { element, chapterName, sliceLabel } = ctx;
-  const { sliceId, id: elementId } = element;
-
-  let text = '';
+export function buildComment(action: Action, input: BuildCommentInput): string {
+  const ctx: CommentContext = {
+    chapterId: input.chapterId,
+    chapterName: input.chapterName,
+    sliceLabel: input.sliceLabel,
+    sliceId: input.element.sliceId,
+    elementId: input.element.id,
+  };
 
   switch (action.kind) {
     case 'known':
-      text = buildKnownComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildKnownComment(action, ctx);
     case 'command':
-      text = buildCommandComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildCommandComment(action, ctx);
     case 'event':
-      text = buildEventComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildEventComment(action, ctx);
     case 'information':
-      text = buildInformationComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildInformationComment(action, ctx);
     case 'prjcase':
-      text = buildPrjcaseComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildPrjcaseComment(action, ctx);
     case 'on':
-      text = buildOnComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildOnComment(action, ctx);
     case 'job':
-      text = buildJobComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildJobComment(action, ctx);
     case 'blocked':
-      text = buildBlockedComment(action, chapterName, sliceLabel, sliceId, elementId);
-      break;
+      return buildBlockedComment(action, ctx);
     case 'context':
       // Context actions don't get task comments (the first element in a new context does)
-      text = '';
-      break;
+      return '';
   }
-
-  return text;
 }
 
 /**
@@ -70,10 +86,7 @@ export function buildComment(action: Action, ctx: { element: BoardElement; chapt
  */
 export function buildKnownComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
   const { key, files, registryFile } = action;
   const fqcn = key.split(':')[1]; // Extract FQCN from "known:FQCN"
@@ -87,10 +100,8 @@ export function buildKnownComment(
   return buildCommentText(
     `known:${fqcn}`,
     `${KNOWN_ELEMENT_SENTENCE}\n\nImplementation:\n${fileBlock}${registryBlock}`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    ctx,
+    action
   );
 }
 
@@ -99,12 +110,9 @@ export function buildKnownComment(
  */
 export function buildCommandComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
-  const { context, command, files, registryFile } = action;
+  const { context, command, files } = action;
   const fqcn = context && command ? `${context}.${command}` : '';
   const ctxKebab = context ? toKebab(context) : '';
   const cmdKebab = command ? toKebab(command) : '';
@@ -116,16 +124,12 @@ export function buildCommandComment(
       `- .../handle.ts: decision logic, returns events\n` +
       `- .../state.ts: state needed for the decision`;
 
-  const contextNote = action.context ? `\nContext ${action.context} was created (src/domain/${ctxKebab}). Review its services.ts and index.ts.` : '';
-
   return buildCommentText(
     `command:${fqcn}`,
     `Boilerplate for command ${fqcn} was generated with \`npx app codegen command ${context} ${command}\`.\n` +
-    `Finalize it:\n${fileBlock}\nRegistered in src/domain/${ctxKebab}/commands.ts.${contextNote}`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    `Finalize it:\n${fileBlock}\nRegistered in src/domain/${ctxKebab}/commands.ts.`,
+    ctx,
+    action
   );
 }
 
@@ -134,12 +138,9 @@ export function buildCommandComment(
  */
 export function buildEventComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
-  const { context, command, event, files, registryFile } = action;
+  const { context, command, event, files, otherCommandSources } = action;
   const fqcn = context && event ? `${context}.${event}` : '';
   const ctxKebab = context ? toKebab(context) : '';
   const cmdKebab = command ? toKebab(command) : '';
@@ -149,14 +150,18 @@ export function buildEventComment(
     : `- src/domain/${ctxKebab}/commands/${cmdKebab}/events/${toKebab(event!)}.ts: event payload type\n` +
       `- make command ${context}.${command} return this event where appropriate`;
 
+  // R4: when several command sources exist, the chosen one generated the
+  // event; the others are named here so the agent can wire them manually.
+  const otherSourcesNote = otherCommandSources && otherCommandSources.length > 0
+    ? `\nOther command source(s) connected to this event on the board: ${otherCommandSources.join(', ')}. Codegen used ${context}.${command}.`
+    : '';
+
   return buildCommentText(
     `event:${fqcn}`,
     `Boilerplate for event ${fqcn} was generated with \`npx app codegen event ${context} ${command} ${event}\` (emitted by command ${context}.${command}).\n` +
-    `Finalize it:\n${fileBlock}\nRegistered in src/domain/${ctxKebab}/events.ts.`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    `Finalize it:\n${fileBlock}\nRegistered in src/domain/${ctxKebab}/events.ts.${otherSourcesNote}`,
+    ctx,
+    action
   );
 }
 
@@ -165,12 +170,9 @@ export function buildEventComment(
  */
 export function buildInformationComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
-  const { context, information, files, registryFile } = action;
+  const { context, information, files } = action;
   const fqcn = context && information ? `${context}.${information}` : '';
   const ctxKebab = context ? toKebab(context) : '';
   const infoKebab = information ? toKebab(information) : '';
@@ -185,10 +187,8 @@ export function buildInformationComment(
     `information:${fqcn}`,
     `Boilerplate for information ${fqcn} was generated with \`npx app codegen information ${context} ${information}\`.\n` +
     `Finalize it:\n${fileBlock}\nRegistered in src/domain/${ctxKebab}/queries.ts.`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    ctx,
+    action
   );
 }
 
@@ -197,12 +197,9 @@ export function buildInformationComment(
  */
 export function buildPrjcaseComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
-  const { context, information, event, files, registryFile } = action;
+  const { context, information, event, files } = action;
   const infoFqcn = context && information ? `${context}.${information}` : '';
   const evtFqcn = context && event ? `${context}.${event}` : '';
   const ctxKebab = context ? toKebab(context) : '';
@@ -218,10 +215,8 @@ export function buildPrjcaseComment(
     `prjcase:${infoFqcn}<-${evtFqcn}`,
     `Projection case for event ${evtFqcn} was generated with \`npx app codegen prjcase ${context} ${information} ${event}\`.\n` +
     `Finalize it:\n${fileBlock}\nDefaults: inline projection, no todo job. Decide whether it should run async (\`--async\`) or add a todo job (\`--adds-todo\`); regenerate or edit the registration in src/domain/${ctxKebab}/events.ts accordingly.`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    ctx,
+    action
   );
 }
 
@@ -230,17 +225,13 @@ export function buildPrjcaseComment(
  */
 export function buildOnComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
-  const { context, automation, event, files, registryFile } = action;
+  const { context, automation, event, files } = action;
   const autoFqcn = context && automation ? `${context}.${automation}` : '';
   const evtFqcn = context && event ? `${context}.${event}` : '';
   const ctxKebab = context ? toKebab(context) : '';
   const autoKebab = automation ? toKebab(automation) : '';
-  const evtKebab = event ? toKebab(event) : '';
 
   const fileBlock = files && files.length > 0
     ? files.map(f => `- ${f}`).join('\n')
@@ -251,10 +242,8 @@ export function buildOnComment(
     `on:${autoFqcn}<-${evtFqcn}`,
     `Event automation ${autoFqcn} reacting to event ${evtFqcn} was generated with \`npx app codegen on ${context} ${event} ${automation}\`.\n` +
     `Finalize it:\n${fileBlock}\nRegistered in src/domain/${ctxKebab}/events.ts (inline by default; decide on \`--async\`).`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    ctx,
+    action
   );
 }
 
@@ -263,17 +252,13 @@ export function buildOnComment(
  */
 export function buildJobComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
-  const { context, automation, information, files, registryFile } = action;
+  const { context, automation, information, files } = action;
   const autoFqcn = context && automation ? `${context}.${automation}` : '';
   const infoFqcn = context && information ? `${context}.${information}` : '';
   const ctxKebab = context ? toKebab(context) : '';
   const autoKebab = automation ? toKebab(automation) : '';
-  const infoKebab = information ? toKebab(information) : '';
 
   const fileBlock = files && files.length > 0
     ? files.map(f => `- ${f}`).join('\n')
@@ -284,10 +269,8 @@ export function buildJobComment(
     `job:${autoFqcn}<-${infoFqcn}`,
     `Job automation ${autoFqcn} working off todo list ${infoFqcn} was generated with \`npx app codegen job ${context} ${information} ${automation}\`.\n` +
     `Finalize it:\n${fileBlock}\nRegistered in src/domain/${ctxKebab}/job-automations.ts.\nThe projection that fills the todo list must set addsTodoJob (see the information's projection cases).`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    ctx,
+    action
   );
 }
 
@@ -296,10 +279,7 @@ export function buildJobComment(
  */
 export function buildBlockedComment(
   action: Action,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext
 ): string {
   const { key, reason, hint } = action;
   const name = key ? key.split(':')[1] : 'this element';
@@ -310,35 +290,36 @@ export function buildBlockedComment(
   return buildCommentText(
     `blocked:${name}`,
     `The bridge did not generate code for this element: ${reasonText}.${hintText}`,
-    chapterName,
-    sliceLabel,
-    sliceId,
-    elementId
+    ctx,
+    action
   );
 }
 
 /**
- * Builds the complete comment text with marker and where-to-look block
+ * Builds the complete comment text with marker, optional context note and
+ * the where-to-look block.
  */
 function buildCommentText(
   marker: string,
   mainContent: string,
-  chapterName: string,
-  sliceLabel: string,
-  sliceId: string,
-  elementId: string
+  ctx: CommentContext,
+  action: Action
 ): string {
+  // task-comments.md: "the comment of the first element in that context
+  // adds: Context {Ctx} was created ..." - only for actions the planner
+  // flagged, not for every element that happens to live in a new context.
+  const contextNote = action.contextNote && action.context
+    ? `\nContext ${action.context} was created (src/domain/${toKebab(action.context)}). Review its services.ts and index.ts.`
+    : '';
+
   const whereToLook = WHERE_TO_LOOK_BLOCK
-    .replace('{chapterName}', chapterName)
-    .replace('{chapterId}', '...') // Will be filled by caller
-    .replace('{sliceLabel}', sliceLabel)
-    .replace('{sliceId}', sliceId)
-    .replace('{elementId}', elementId);
+    .replace('{chapterName}', ctx.chapterName)
+    .replace('{chapterId}', ctx.chapterId)
+    .replace('{sliceLabel}', ctx.sliceLabel)
+    .replace('{sliceId}', ctx.sliceId)
+    .replace('{elementId}', ctx.elementId);
 
-  // Replace placeholder chapterId if passed in mainContent (not currently used)
-  const fullContent = mainContent.replace('{chapterId}', '...');
-
-  return `[em-to-code-blueprint:${marker}]\n\n${fullContent}\n\n${whereToLook}`;
+  return `[em-to-code-blueprint:${marker}]\n\n${mainContent}${contextNote}\n\n${whereToLook}`;
 }
 
 /**

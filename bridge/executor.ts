@@ -177,39 +177,99 @@ function hasOpenMarker(element: BoardElement, actionKey: string): boolean {
 // Helpers: target element for comment
 // ---------------------------------------------------------------------------
 
+interface CommentTarget {
+  /** chapterId + elementId to POST the comment to */
+  elementId: string;
+  chapterId: string;
+  /** element ref for buildComment ({id, sliceId}) */
+  elementRef: { id: string; sliceId: string };
+  /** element to run the open-marker check on; null when not fetchable */
+  markerCheckElement: BoardElement | null;
+  /** board context for the comment's "where to look" block */
+  chapterName: string;
+  sliceLabel: string;
+}
+
 /**
- * Returns the `{ chapterId, elementId }` to use when posting a comment, plus
- * the `BoardElement` needed by `buildComment`.
+ * Resolve where an action's task comment goes.
  *
- * The planner's action keys encode FQCN which lets us locate the right element.
- * For link actions (prjcase, on, job) the comment goes to a specific element:
- * - prjcase -> information element
- * - on / job -> automation element
- * - command / event / information / known / blocked -> the element matching the FQCN
- * - context -> no comment (handled before this is called)
+ * Preferred source is `action.commentTarget`, set by the planner for every
+ * action: slice elements point at themselves, counterpart actions
+ * (prjcase/on/job and their blocked variants) point at the counterpart
+ * element with its own chapterId (api-contracts 2.3: post to the chapter
+ * that owns the element).
+ *
+ * Counterpart elements are not part of the triggering slice's element list.
+ * For the open-marker check we fetch their slice's elements via
+ * `commentTarget.sliceId` — slice elements carry `comments`, while the
+ * dependency-graph response's `element` does not. Counterpart slices are
+ * cached per (chapterId, sliceId) since several actions (e.g. information +
+ * prjcase) often target the same counterpart slice. When the fetch fails or
+ * no sliceId is known we post anyway and log a warning.
  */
-function findCommentTarget(
+async function resolveCommentTarget(
   action: Action,
-  elements: BoardElement[]
-): { element: BoardElement; chapterId: string } | null {
-  // Extract the target FQCN from the action key.
-  // Keys have shapes like:  command:Ctx.Name  or  prjcase:Ctx.Info<-Ctx.Evt
-  // The comment always goes to the element whose FQCN is the first segment after the kind prefix.
+  elements: BoardElement[],
+  prooph: ProophClient,
+  opts: { sliceLabel: string; chapterName: string },
+  logger: Logger,
+  sliceElementCache: Map<string, {elements: BoardElement[]; sliceLabel: string}>
+): Promise<CommentTarget | null> {
+  if (action.commentTarget) {
+    const t = action.commentTarget;
+    const inSlice = elements.find(e => e.id === t.elementId && e.chapterId === t.chapterId);
+
+    let markerCheckElement: BoardElement | null = inSlice ?? null;
+    let counterpartSliceLabel: string | undefined;
+    if (!markerCheckElement && t.sliceId) {
+      const cacheKey = `${t.chapterId}:${t.sliceId}`;
+      try {
+        let cached = sliceElementCache.get(cacheKey);
+        if (!cached) {
+          const res = await prooph.getSliceElements(t.chapterId, t.sliceId);
+          cached = { elements: res.elements, sliceLabel: res.slice.label ?? t.sliceId };
+          sliceElementCache.set(cacheKey, cached);
+        }
+        markerCheckElement = cached.elements.find(e => e.id === t.elementId) ?? null;
+        counterpartSliceLabel = cached.sliceLabel;
+      } catch {
+        logger.warn(
+          `Could not fetch counterpart slice ${t.sliceId} for marker check; posting without idempotency check.`
+        );
+      }
+    } else if (!markerCheckElement) {
+      logger.warn(
+        `No sliceId for counterpart element ${t.elementId}; posting without idempotency check.`
+      );
+    }
+
+    return {
+      elementId: t.elementId,
+      chapterId: t.chapterId,
+      elementRef: inSlice ?? { id: t.elementId, sliceId: t.sliceId ?? '' },
+      markerCheckElement,
+      chapterName: t.chapterName || inSlice?.chapterName || opts.chapterName,
+      sliceLabel: inSlice ? opts.sliceLabel : (counterpartSliceLabel ?? t.sliceId ?? opts.sliceLabel),
+    };
+  }
+
+  // Fallback for actions without a planner-provided target: match the FQCN
+  // in the action key against the slice elements.
   const keyBody = action.key.slice(action.kind.length + 1); // strip "kind:"
   const fqcnForComment = keyBody.split('<-')[0]; // for prjcase/on/job, take the left side
-
-  // Build FQCN for each element and try to find a match.
-  // Board element names are raw text ("Plan Todo"); normalise to PascalCase
-  // before comparing against the action key which always uses PascalCase FQCNs.
   for (const el of elements) {
     const fqcn = `${toPascalCase(el.context)}.${toPascalCase(el.name)}`;
     if (fqcn === fqcnForComment) {
-      return { element: el, chapterId: el.chapterId };
+      return {
+        elementId: el.id,
+        chapterId: el.chapterId,
+        elementRef: el,
+        markerCheckElement: el,
+        chapterName: el.chapterName || opts.chapterName,
+        sliceLabel: opts.sliceLabel,
+      };
     }
   }
-
-  // For prjcase the comment goes to the info element; for on/job to the automation.
-  // If the slice does not contain the target element, we cannot post a comment.
   return null;
 }
 
@@ -314,20 +374,23 @@ export async function execute(
   }
 
   const results: ActionResult[] = [];
-  // Keys of actions that have failed; used to skip dependants.
-  const failedKeys = new Set<string>();
+  // Counterpart slices fetched for the open-marker check, keyed
+  // `${chapterId}:${sliceId}` — several actions often share one counterpart
+  // slice (e.g. information + prjcase on the same information element).
+  const sliceElementCache = new Map<string, {elements: BoardElement[]; sliceLabel: string}>();
 
   for (const action of plan.actions) {
     // -----------------------------------------------------------------------
-    // 0. Skip dependants of failed actions
+    // 0. Skip dependants of failed actions (transitively: a skipped dependant
+    //    did not produce its effect either, so it blocks its own dependants)
     // -----------------------------------------------------------------------
-    const failedUpstream = [...failedKeys].some(fk => {
-      const upstreamAction = results.find(r => r.action.key === fk)?.action;
-      return upstreamAction ? isDependant(upstreamAction, action) : false;
-    });
+    const failedUpstream = results.find(r =>
+      (r.status === 'failed' || r.status === 'dependant-skipped') &&
+      isDependant(r.action, action)
+    );
 
     if (failedUpstream) {
-      logger.warn(`Skipping ${action.key}: upstream action failed.`);
+      logger.warn(`Skipping ${action.key}: upstream action ${failedUpstream.action.key} failed or was skipped.`);
       results.push({ action, status: 'dependant-skipped' });
       continue;
     }
@@ -357,7 +420,6 @@ export async function execute(
         logger.error(
           `Codegen failed for ${action.key} (exit ${runResult.exitCode}): ${stderr}`
         );
-        failedKeys.add(action.key);
         results.push({
           action,
           status: 'failed',
@@ -380,7 +442,14 @@ export async function execute(
       continue;
     }
 
-    const target = findCommentTarget(action, elements);
+    const target = await resolveCommentTarget(
+      action,
+      elements,
+      prooph,
+      { sliceLabel, chapterName },
+      logger,
+      sliceElementCache
+    );
     if (!target) {
       // Cannot find the element to comment on (e.g. a cross-slice element we
       // don't have in our elements list). Log and move on.
@@ -389,29 +458,29 @@ export async function execute(
       continue;
     }
 
-    const { element, chapterId } = target;
-
     // Check idempotency: don't re-post an open task with the same marker.
-    if (hasOpenMarker(element, action.key)) {
+    // Only possible when we could read the target element's comments.
+    if (target.markerCheckElement && hasOpenMarker(target.markerCheckElement, action.key)) {
       logger.info(`Comment marker already present for ${action.key}; skipping.`);
       results.push({ action, status: 'ok', commentPosted: false });
       continue;
     }
 
     const commentText = buildComment(action, {
-      element,
-      chapterName,
-      sliceLabel,
+      element: target.elementRef,
+      chapterId: target.chapterId,
+      chapterName: target.chapterName,
+      sliceLabel: target.sliceLabel,
     });
 
     try {
-      await prooph.addTaskComment(chapterId, element.id, commentText);
+      await prooph.addTaskComment(target.chapterId, target.elementId, commentText);
       logger.info(`Comment posted for ${action.key}.`);
       results.push({ action, status: 'ok', commentPosted: true });
     } catch (err) {
       const commentError = err instanceof Error ? err.message : String(err);
       logger.error(
-        `Comment POST failed for ${action.key} (element ${element.id}): ${commentError}`
+        `Comment POST failed for ${action.key} (element ${target.elementId}): ${commentError}`
       );
       results.push({
         action,

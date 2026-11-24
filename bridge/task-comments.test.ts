@@ -1,3 +1,16 @@
+// Task-comment template tests
+// Mapping to task-comments.md templates:
+// - marker format [em-to-code-blueprint:<action-key>]: asserted in every builder test
+// - where-to-look block incl. real chapterId/sliceLabel/elementId: every builder test + "renders the real chapter id"
+// - known: KNOWN_ELEMENT_SENTENCE constant, files + registryFile variants, inline snapshot
+// - command: files block, registry line, context note (only when flagged), inline snapshot
+// - event: files block, other-command-sources note (present/absent), inline snapshot
+// - information / prjcase / on / job: files block + registration line, inline snapshots
+// - blocked: reason + optional hint, inline snapshot
+// - context note ("Context X was created"): gated on action.contextNote, covered for
+//   command and asserted absent otherwise
+// - context actions produce no comment
+
 import { describe, it, expect } from 'vitest';
 import {
   KNOWN_ELEMENT_SENTENCE,
@@ -34,8 +47,26 @@ const mockElement: BoardElement = {
 
 const ctx = {
   element: mockElement,
+  chapterId: 'chapter-1',
   chapterName: 'Test Chapter',
   sliceLabel: 'Test Slice'
+};
+
+// CommentContext for the per-kind builder functions
+const CCTX = {
+  chapterId: 'chapter-1',
+  chapterName: 'Test Chapter',
+  sliceLabel: 'Test Slice',
+  sliceId: 'slice-1',
+  elementId: 'element-123'
+};
+
+const CCTX_SNAPSHOT = {
+  chapterId: 'chapter-1',
+  chapterName: 'User Management',
+  sliceLabel: 'Slice 1',
+  sliceId: 'slice-1',
+  elementId: 'element-123'
 };
 
 describe('task-comments', () => {
@@ -63,7 +94,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/commands.ts'
       };
 
-      const comment = buildKnownComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildKnownComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:known:Crm.CreateUser]');
       expect(comment).toContain(KNOWN_ELEMENT_SENTENCE);
@@ -80,7 +111,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/events.ts'
       };
 
-      const comment = buildKnownComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildKnownComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:known:Crm.UserCreated]');
       expect(comment).toContain('No files generated');
@@ -98,7 +129,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/commands.ts'
       };
 
-      const comment = buildCommandComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildCommandComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:command:Crm.CreateUser]');
       expect(comment).toContain('Boilerplate for command Crm.CreateUser was generated');
@@ -114,18 +145,48 @@ describe('task-comments', () => {
         context: 'Crm',
         command: 'CreateUser',
         files: ['src/domain/crm/commands/create-user/handle.ts'],
-        registryFile: 'src/domain/crm/commands.ts'
+        registryFile: 'src/domain/crm/commands.ts',
+        contextNote: true
       };
 
-      // Mark as new context
-      (action as any).contextNote = true;
-
-      const comment = buildCommandComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildCommandComment(action, CCTX);
 
       expect(comment).toContain('Context Crm was created');
       expect(comment).toContain('src/domain/crm');
       expect(comment).toContain('services.ts');
       expect(comment).toContain('index.ts');
+    });
+
+    it('does not include context note for elements in an existing context', () => {
+      const action: Action = {
+        kind: 'command',
+        key: 'command:Crm.CreateUser',
+        context: 'Crm',
+        command: 'CreateUser',
+        files: ['src/domain/crm/commands/create-user/handle.ts'],
+        registryFile: 'src/domain/crm/commands.ts'
+        // no contextNote flag
+      };
+
+      const comment = buildCommandComment(action, CCTX);
+
+      expect(comment).not.toContain('was created');
+    });
+
+    it('renders the real chapter id in the board reference', () => {
+      const action: Action = {
+        kind: 'command',
+        key: 'command:Crm.CreateUser',
+        context: 'Crm',
+        command: 'CreateUser',
+        files: [],
+        registryFile: 'src/domain/crm/commands.ts'
+      };
+
+      const comment = buildCommandComment(action, CCTX);
+
+      expect(comment).toContain('chapter Test Chapter (chapter-1)');
+      expect(comment).not.toContain('(...)');
     });
   });
 
@@ -141,7 +202,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/events.ts'
       };
 
-      const comment = buildEventComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildEventComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:event:Crm.UserCreated]');
       expect(comment).toContain('Boilerplate for event Crm.UserCreated was generated');
@@ -149,6 +210,41 @@ describe('task-comments', () => {
       expect(comment).toContain('emitted by command Crm.CreateUser');
       expect(comment).toContain('src/domain/crm/events/user-created/apply.ts');
       expect(comment).toContain('src/domain/crm/events.ts');
+    });
+
+    it('mentions other command sources when the board has several', () => {
+      const action: Action = {
+        kind: 'event',
+        key: 'event:Crm.UserCreated',
+        context: 'Crm',
+        command: 'CreateUser',
+        event: 'UserCreated',
+        files: ['src/domain/crm/commands/create-user/events/user-created.ts'],
+        registryFile: 'src/domain/crm/events.ts',
+        otherCommandSources: ['Crm.RegisterUser']
+      };
+
+      const comment = buildEventComment(action, CCTX);
+
+      expect(comment).toContain('Other command source(s)');
+      expect(comment).toContain('Crm.RegisterUser');
+      expect(comment).toContain('Codegen used Crm.CreateUser');
+    });
+
+    it('omits the other-command-sources note when there is only one', () => {
+      const action: Action = {
+        kind: 'event',
+        key: 'event:Crm.UserCreated',
+        context: 'Crm',
+        command: 'CreateUser',
+        event: 'UserCreated',
+        files: [],
+        registryFile: 'src/domain/crm/events.ts'
+      };
+
+      const comment = buildEventComment(action, CCTX);
+
+      expect(comment).not.toContain('Other command source');
     });
   });
 
@@ -163,7 +259,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/queries.ts'
       };
 
-      const comment = buildInformationComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildInformationComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:information:Crm.UserList]');
       expect(comment).toContain('Boilerplate for information Crm.UserList was generated');
@@ -185,7 +281,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/events.ts'
       };
 
-      const comment = buildPrjcaseComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildPrjcaseComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:prjcase:Crm.UserList<-Crm.UserCreated]');
       expect(comment).toContain('Projection case for event Crm.UserCreated was generated');
@@ -208,7 +304,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/events.ts'
       };
 
-      const comment = buildOnComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildOnComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:on:Crm.SendNotification<-Crm.UserCreated]');
       expect(comment).toContain('Event automation Crm.SendNotification reacting to event Crm.UserCreated was generated');
@@ -231,7 +327,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/job-automations.ts'
       };
 
-      const comment = buildJobComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildJobComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:job:Crm.ProcessTodo<-Crm.TodoList]');
       expect(comment).toContain('Job automation Crm.ProcessTodo working off todo list Crm.TodoList was generated');
@@ -251,7 +347,7 @@ describe('task-comments', () => {
         hint: 'use a valid PascalCase name'
       };
 
-      const comment = buildBlockedComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildBlockedComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:blocked:Crm.CreateUser]');
       expect(comment).toContain('The bridge did not generate code for this element: invalid name for codegen');
@@ -265,7 +361,7 @@ describe('task-comments', () => {
         reason: 'event without command source'
       };
 
-      const comment = buildBlockedComment(action, 'Test Chapter', 'Test Slice', 'slice-1', 'element-123');
+      const comment = buildBlockedComment(action, CCTX);
 
       expect(comment).toContain('[em-to-code-blueprint:blocked:Event.WithoutCommand]');
       expect(comment).toContain('event without command source');
@@ -460,7 +556,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/commands.ts'
       };
 
-      expect(buildKnownComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildKnownComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:known:Crm.CreateUser]
 
         Element is known in the app. Compare the information in the Event Model with the implementation and make necessary changes to the implementation when needed.
@@ -474,7 +570,7 @@ describe('task-comments', () => {
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });
@@ -489,7 +585,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/commands.ts'
       };
 
-      expect(buildCommandComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildCommandComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:command:Crm.CreateUser]
 
         Boilerplate for command Crm.CreateUser was generated with \`npx app codegen command Crm CreateUser\`.
@@ -499,13 +595,12 @@ describe('task-comments', () => {
         - src/domain/crm/commands/create-user/payload.ts
         - src/domain/crm/commands/create-user/state.ts
         Registered in src/domain/crm/commands.ts.
-        Context Crm was created (src/domain/crm). Review its services.ts and index.ts.
 
         Before implementing:
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });
@@ -521,7 +616,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/events.ts'
       };
 
-      expect(buildEventComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildEventComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:event:Crm.UserCreated]
 
         Boilerplate for event Crm.UserCreated was generated with \`npx app codegen event Crm CreateUser UserCreated\` (emitted by command Crm.CreateUser).
@@ -533,7 +628,7 @@ describe('task-comments', () => {
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });
@@ -548,7 +643,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/queries.ts'
       };
 
-      expect(buildInformationComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildInformationComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:information:Crm.UserList]
 
         Boilerplate for information Crm.UserList was generated with \`npx app codegen information Crm UserList\`.
@@ -562,7 +657,7 @@ describe('task-comments', () => {
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });
@@ -578,7 +673,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/events.ts'
       };
 
-      expect(buildPrjcaseComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildPrjcaseComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:prjcase:Crm.UserList<-Crm.UserCreated]
 
         Projection case for event Crm.UserCreated was generated with \`npx app codegen prjcase Crm UserList UserCreated\`.
@@ -592,7 +687,7 @@ describe('task-comments', () => {
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });
@@ -608,7 +703,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/events.ts'
       };
 
-      expect(buildOnComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildOnComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:on:Crm.SendNotification<-Crm.UserCreated]
 
         Event automation Crm.SendNotification reacting to event Crm.UserCreated was generated with \`npx app codegen on Crm UserCreated SendNotification\`.
@@ -622,7 +717,7 @@ describe('task-comments', () => {
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });
@@ -638,7 +733,7 @@ describe('task-comments', () => {
         registryFile: 'src/domain/crm/job-automations.ts'
       };
 
-      expect(buildJobComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildJobComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:job:Crm.ProcessTodo<-Crm.TodoList]
 
         Job automation Crm.ProcessTodo working off todo list Crm.TodoList was generated with \`npx app codegen job Crm TodoList ProcessTodo\`.
@@ -653,7 +748,7 @@ describe('task-comments', () => {
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });
@@ -666,7 +761,7 @@ describe('task-comments', () => {
         hint: 'see README todo "External Events"'
       };
 
-      expect(buildBlockedComment(action, 'User Management', 'Slice 1', 'slice-1', 'element-123')).toMatchInlineSnapshot(`
+      expect(buildBlockedComment(action, CCTX_SNAPSHOT)).toMatchInlineSnapshot(`
         "[em-to-code-blueprint:blocked:Crm.CreateUser]
 
         The bridge did not generate code for this element: cross-context link.
@@ -676,7 +771,7 @@ describe('task-comments', () => {
         - Read this element's description and details on prooph board.
         - Check the element's play type and play function.
         - If needed, look at the other elements of this slice, the chapter, and the chapter scenarios.
-        Board reference: chapter User Management (...), slice Slice 1 (slice-1), element element-123.
+        Board reference: chapter User Management (chapter-1), slice Slice 1 (slice-1), element element-123.
         When done, resolve this task."
       `);
     });

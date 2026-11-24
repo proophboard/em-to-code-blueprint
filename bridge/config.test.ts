@@ -26,7 +26,7 @@ describe('config', () => {
 
       expect(result.chapterId).toBe('chapter-123');
       expect(result.sliceId).toBe('slice-456');
-      expect(result.endpoint).toBe('https://api.proophboard.com');
+      expect(result.endpoint).toBe('https://flow.prooph-board.com/api');
       expect(result.apiKey).toBe('test-key-123');
       expect(result.dryRun).toBe(false);
       expect(result.eventSourced).toBe(false);
@@ -42,6 +42,54 @@ describe('config', () => {
 
       expect(result.chapterId).toBe('chapter-123');
       expect(result.sliceId).toBe('slice-456');
+    });
+
+    it('accepts sliceId as positional arg (spec-stream invocation)', () => {
+      const env = {
+        SPEC_STREAM_CHAPTER_ID: 'chapter-123',
+        PROOPHBOARD_API_KEY: 'test-key-123'
+      };
+
+      const result = parseInvocation(['slice-456'], env);
+
+      expect(result.sliceId).toBe('slice-456');
+    });
+
+    it('prefers --slice-id over positional arg and env', () => {
+      const env = {
+        SPEC_STREAM_CHAPTER_ID: 'chapter-123',
+        SPEC_STREAM_SLICE_ID: 'env-slice',
+        PROOPHBOARD_API_KEY: 'test-key-123'
+      };
+
+      const result = parseInvocation(['positional-slice', '--slice-id', 'flag-slice'], env);
+
+      expect(result.sliceId).toBe('flag-slice');
+    });
+
+    it('uses chapterId from stdin event JSON when env var is missing', () => {
+      const env = {
+        SPEC_STREAM_SLICE_ID: 'slice-456',
+        PROOPHBOARD_API_KEY: 'test-key-123'
+      };
+      const stdinText = JSON.stringify({ mode: 'single', event: { chapterId: 'stdin-chapter' }, row: {} });
+
+      const result = parseInvocation([], env, stdinText);
+
+      expect(result.chapterId).toBe('stdin-chapter');
+    });
+
+    it('prefers env chapterId over stdin', () => {
+      const env = {
+        SPEC_STREAM_CHAPTER_ID: 'env-chapter',
+        SPEC_STREAM_SLICE_ID: 'slice-456',
+        PROOPHBOARD_API_KEY: 'test-key-123'
+      };
+      const stdinText = JSON.stringify({ event: { chapterId: 'stdin-chapter' } });
+
+      const result = parseInvocation([], env, stdinText);
+
+      expect(result.chapterId).toBe('env-chapter');
     });
 
     it('argv values take precedence over env vars', () => {

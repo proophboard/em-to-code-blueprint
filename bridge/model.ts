@@ -42,6 +42,8 @@ export interface DependencyNode {
   name: string;
   context: string;
   chapterId: string;
+  sliceId?: string;
+  chapterName?: string;
 }
 
 export interface DependencyGraph {
@@ -95,6 +97,9 @@ export interface Action {
   autoFqcn?: string; // for on/job: automation FQCN
   files?: string[]; // generated file paths
   registryFile?: string; // registry file path
+  contextNote?: boolean; // comment should carry the "context was created" note
+  otherCommandSources?: string[]; // other command source FQCNs not chosen for an event
+  commentTarget?: { elementId: string; chapterId: string; sliceId?: string; chapterName?: string }; // explicit comment target (counterpart elements)
 }
 
 export interface Note {
@@ -134,7 +139,7 @@ export interface BridgeDeps {
 
 export interface ProophClient {
   getSliceElements(chapterId: string, sliceId: string): Promise<{
-    slice: { id: string; chapterId: string };
+    slice: { id: string; chapterId: string; label?: string };
     elements: BoardElement[];
     chapterName: string;
   }>;

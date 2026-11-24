@@ -30,20 +30,23 @@ export function parseInvocation(
 ): Invocation {
   const args = parseArgs(argv);
 
-  // Determine chapter ID
-  const chapterId = args.chapterId || env.SPEC_STREAM_CHAPTER_ID;
+  // Determine chapter ID. spec-stream always injects SPEC_STREAM_CHAPTER_ID;
+  // when running manually (or when the var is missing) fall back to the
+  // chapterId carried in the stdin event payload.
+  const chapterId = args.chapterId || env.SPEC_STREAM_CHAPTER_ID || chapterIdFromStdin(stdinText);
   if (!chapterId) {
-    throw new Error('Missing chapter ID. Provide via --chapter-id or SPEC_STREAM_CHAPTER_ID env var');
+    throw new Error('Missing chapter ID. Provide via --chapter-id, SPEC_STREAM_CHAPTER_ID env var, or stdin event JSON');
   }
 
-  // Determine slice ID
-  const sliceId = args.sliceId || env.SPEC_STREAM_SLICE_ID;
+  // Determine slice ID. spec-stream passes it as the first positional arg
+  // ("npx tsx bridge/index.ts \"$SPEC_STREAM_SLICE_ID\""); env var is the fallback.
+  const sliceId = args.sliceId || args._[0] || env.SPEC_STREAM_SLICE_ID;
   if (!sliceId) {
-    throw new Error('Missing slice ID. Provide via --slice-id or SPEC_STREAM_SLICE_ID env var');
+    throw new Error('Missing slice ID. Provide via --slice-id, positional arg, or SPEC_STREAM_SLICE_ID env var');
   }
 
   // Determine endpoint
-  const endpoint = args.endpoint || env.PROOPHBOARD_API_ENDPOINT || 'https://api.proophboard.com';
+  const endpoint = args.endpoint || env.PROOPHBOARD_API_ENDPOINT || 'https://flow.prooph-board.com/api';
   
   // Determine API key
   const apiKey = env.PROOPHBOARD_API_KEY;
@@ -66,6 +69,23 @@ export function parseInvocation(
     eventSourced,
     inputText: stdinText
   };
+}
+
+/**
+ * Extracts a chapterId from the spec-stream stdin payload.
+ * spec-stream pipes `{ mode, event: { chapterId, ... }, row: {...} }` as JSON.
+ * Returns undefined when stdin is empty or does not contain a chapterId.
+ */
+function chapterIdFromStdin(stdinText?: string): string | undefined {
+  if (!stdinText) {
+    return undefined;
+  }
+  try {
+    const parsed = JSON.parse(stdinText);
+    return parsed?.event?.chapterId ?? parsed?.chapterId ?? undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -106,12 +126,12 @@ export function printHelp(): void {
   console.log(`
 Bridge: Event Model (prooph board) -> Blueprint
 
-Usage: bridge [options]
+Usage: bridge [slice-id] [options]
 
 Options:
   --chapter-id, -c <id>     Chapter ID (or use SPEC_STREAM_CHAPTER_ID env var)
-  --slice-id, -s <id>       Slice ID (or use SPEC_STREAM_SLICE_ID env var)
-  --endpoint, -e <url>      Prooph board API endpoint (default: https://api.proophboard.com)
+  --slice-id, -s <id>       Slice ID (or positional arg / SPEC_STREAM_SLICE_ID env var)
+  --endpoint, -e <url>      Prooph board API endpoint (default: https://flow.prooph-board.com/api)
   --dry-run                 Show plan without executing
   --event-sourced           Enable event-sourced context generation
   --help, -h                Show this help message
